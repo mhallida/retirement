@@ -139,7 +139,21 @@
     font-variant-numeric: tabular-nums;
     color: var(--text);
     line-height: 1;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    padding: 0;
+    width: 0; /* lets flex:1 work without min-content width */
+    min-width: 0;
+    appearance: textfield;
+    -moz-appearance: textfield;
   }
+  .age-stepper .age-num::-webkit-outer-spin-button,
+  .age-stepper .age-num::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .age-stepper .age-num:focus { outline: none; }
   .age-stepper button {
     width: 32px;
     height: 32px;
@@ -302,10 +316,10 @@
   /* Totals */
   .substats {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 28px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
   }
-  @media (max-width: 540px) { .substats { grid-template-columns: 1fr; gap: 14px; } }
+  @media (max-width: 640px) { .substats { grid-template-columns: 1fr; gap: 14px; } }
   .stat .lbl {
     font-size: 11px;
     color: var(--text-faint);
@@ -716,7 +730,7 @@
           <span class="lbl">Age to start</span>
           <div class="age-stepper">
             <button type="button" id="age-minus" aria-label="Decrease age">−</button>
-            <span class="age-num" id="age-display">20</span>
+            <input id="age-num" class="age-num" type="number" min="18" max="70" step="1" value="20" aria-label="Age to start" inputmode="numeric">
             <button type="button" id="age-plus" aria-label="Increase age">+</button>
           </div>
         </div>
@@ -740,6 +754,10 @@
         <div class="stat">
           <div class="lbl">Compounding does the rest</div>
           <div class="val" id="total-growth">$0</div>
+        </div>
+        <div class="stat">
+          <div class="lbl">Drawn from fund each year</div>
+          <div class="val" id="annual-draw">$0</div>
         </div>
       </div>
 
@@ -1213,12 +1231,12 @@ bindPair('ret-acc-slider',   'ret-acc-num',   'rAccum',    0.01);
 bindPair('ret-ret-slider',   'ret-ret-num',   'rRet',      0.01);
 bindPair('inflation-slider', 'inflation-num', 'inflation', 0.01);
 
-// Age stepper (replaces the slider)
+// Age stepper: typeable input + / − buttons.
 const ageMinus = document.getElementById('age-minus');
 const agePlus  = document.getElementById('age-plus');
-const ageDisplay = document.getElementById('age-display');
+const ageInput = document.getElementById('age-num');
 function refreshAgeStepper() {
-  ageDisplay.textContent = state.scrubAge;
+  if (document.activeElement !== ageInput) ageInput.value = state.scrubAge;
   ageMinus.disabled = state.scrubAge <= state.scrubMin;
   agePlus.disabled  = state.scrubAge >= state.scrubMax;
 }
@@ -1227,6 +1245,25 @@ ageMinus.addEventListener('click', () => {
 });
 agePlus.addEventListener('click', () => {
   if (state.scrubAge < state.scrubMax) { state.scrubAge++; refreshAgeStepper(); recompute(); }
+});
+ageInput.addEventListener('input', () => {
+  const v = parseInt(ageInput.value, 10);
+  if (!isNaN(v) && v >= state.scrubMin && v <= state.scrubMax) {
+    state.scrubAge = v;
+    refreshAgeStepper();
+    recompute();
+  }
+});
+ageInput.addEventListener('blur', () => {
+  // Snap to a valid value on blur so an empty/out-of-range field can't linger.
+  let v = parseInt(ageInput.value, 10);
+  if (isNaN(v))           v = state.scrubAge;
+  if (v < state.scrubMin) v = state.scrubMin;
+  if (v > state.scrubMax) v = state.scrubMax;
+  state.scrubAge = v;
+  ageInput.value = v;
+  refreshAgeStepper();
+  recompute();
 });
 refreshAgeStepper();
 
@@ -1297,6 +1334,9 @@ function recompute() {
   document.getElementById('monthly-headline').textContent = fmtMoney(sel.displayMonthly);
   document.getElementById('total-oop').textContent       = fmtMoney(sel.displayContrib);
   document.getElementById('total-growth').textContent    = fmtMoney(Math.max(0, sel.displayGrowth ?? 0));
+  document.getElementById('annual-draw').textContent     = fmtMoney(
+    state.nominal ? toNominal(state.income, state.retStartAge - state.scrubAge, state.inflation) : state.income
+  );
 
   // Wait card. Rounded values keep the displayed math internally consistent.
   const baseM   = sel.displayMonthly  == null ? null : Math.round(sel.displayMonthly);
