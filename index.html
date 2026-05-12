@@ -83,52 +83,90 @@
   }
   @media (max-width: 540px) { .pricetag { padding: 24px 22px; } }
 
-  .pt-input {
+  .pt-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-bottom: 8px;
+  }
+  @media (max-width: 540px) {
+    .pt-fields { grid-template-columns: 1fr; gap: 22px; }
+  }
+  .pt-field { display: flex; flex-direction: column; gap: 8px; }
+  .pt-field .lbl {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: var(--text-faint);
+  }
+  .pt-field .input-line {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+  }
+  .pt-field .input-line:focus-within { border-bottom-color: var(--accent); }
+  .pt-field .input-line .prefix {
+    color: var(--text-faint);
+    font-size: 20px;
+    font-weight: 500;
+  }
+  .pt-field input[type=text] {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    font-size: 24px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    border: none;
+    background: transparent;
+    padding: 2px 0;
+    color: var(--text);
+    width: 100%;
+  }
+  .pt-field input[type=text]:focus { outline: none; }
+  .age-stepper {
     display: flex;
     align-items: center;
     gap: 14px;
-    margin-bottom: 14px;
+    padding: 2px 0 4px;
+    border-bottom: 1px solid var(--border);
   }
-  .pt-input:last-of-type { margin-bottom: 22px; }
-  .pt-input .lbl {
-    font-size: 13px;
-    color: var(--text-soft);
-    width: 110px;
-    flex-shrink: 0;
-  }
-  .pt-input input[type=range] {
+  .age-stepper .age-num {
     flex: 1;
-    accent-color: var(--accent);
-    cursor: pointer;
-    min-width: 0;
-  }
-  .pt-input .value-pill {
-    font-variant-numeric: tabular-nums;
+    text-align: center;
+    font-size: 24px;
     font-weight: 600;
-    color: var(--text);
-    min-width: 90px;
-    text-align: right;
-    font-size: 15px;
-  }
-  .pt-input input[type=text] {
-    width: 110px;
-    padding: 5px 8px;
-    font: inherit;
-    font-size: 14px;
     font-variant-numeric: tabular-nums;
+    color: var(--text);
+    line-height: 1.1;
+  }
+  .age-stepper button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     border: 1px solid var(--border);
     background: var(--panel);
-    border-radius: 4px;
-    text-align: right;
-    color: var(--text);
+    color: var(--text-soft);
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s ease;
+    padding: 0;
   }
-  .pt-input input[type=text]:focus { outline: none; border-color: var(--accent); }
-  .pt-input .unit {
-    color: var(--text-faint);
-    font-size: 14px;
-    width: 8px;
-    text-align: center;
-    margin-right: -6px;
+  .age-stepper button:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .age-stepper button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
   }
 
   .pt-divider {
@@ -164,96 +202,104 @@
     .headline .big { font-size: 40px; }
   }
 
-  /* Delay penalty cards */
-  .delay-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
+  /* Wait scenario: tabs + single card */
+  .wait-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
   }
-  @media (max-width: 540px) { .delay-row { grid-template-columns: 1fr; } }
-  .delay-card {
-    padding: 16px 18px;
+  @media (max-width: 540px) {
+    .wait-tabs { flex-wrap: wrap; gap: 6px; }
+  }
+  .wait-tab {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text-soft);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+  }
+  .wait-tab:hover { color: var(--warm); border-color: var(--warm); }
+  .wait-tab.active {
+    background: var(--warm);
+    color: #ffffff;
+    border-color: var(--warm);
+  }
+
+  .wait-card {
+    padding: 22px 24px;
     border-radius: 6px;
-    border: 1px solid;
-  }
-  .delay-card.warn5 {
     background: var(--warm-soft);
-    border-color: rgba(184, 92, 46, 0.18);
+    border: 1px solid rgba(184, 92, 46, 0.18);
   }
-  .delay-card.warn10 {
-    background: var(--warm-deep-soft);
-    border-color: rgba(139, 58, 27, 0.22);
-  }
-  .delay-card .delay-lbl {
+  .wait-card .wait-sub {
     font-size: 11px;
+    color: var(--warm);
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    font-weight: 600;
-    margin-bottom: 4px;
+    margin-bottom: 16px;
   }
-  .delay-card.warn5 .delay-lbl { color: var(--warm); }
-  .delay-card.warn10 .delay-lbl { color: var(--warm-deep); }
-  .delay-card .delay-sub {
-    font-size: 12px;
+  .wait-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 540px) {
+    .wait-grid { grid-template-columns: 1fr; gap: 14px; }
+  }
+  .wait-col .col-lbl {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
     color: var(--text-faint);
-    margin-bottom: 8px;
-  }
-  .delay-card .delay-value {
-    font-size: 24px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    color: var(--text);
-    line-height: 1.1;
+    font-weight: 500;
     margin-bottom: 4px;
   }
-  .delay-card .delay-extra {
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 500;
-  }
-  .delay-card.warn5 .delay-extra { color: var(--warm); }
-  .delay-card.warn10 .delay-extra { color: var(--warm-deep); }
-  .delay-card .delay-total {
-    font-size: 17px;
+  .wait-col .col-value {
+    font-size: 22px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--text);
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
-    line-height: 1.2;
+    line-height: 1.15;
+    margin-bottom: 4px;
   }
-  .delay-card .delay-total-extra {
+  .wait-col .col-extra {
     font-size: 12px;
-    font-variant-numeric: tabular-nums;
     font-weight: 500;
-    margin-top: 3px;
+    color: var(--warm);
+    font-variant-numeric: tabular-nums;
   }
-  .delay-card.warn5 .delay-total-extra { color: var(--warm); }
-  .delay-card.warn10 .delay-total-extra { color: var(--warm-deep); }
-  .delay-card .delay-alt-title {
+
+  .wait-flip {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.07);
+  }
+  .wait-flip .flip-title {
     font-size: 12.5px;
     font-weight: 500;
     color: var(--text-soft);
-    line-height: 1.4;
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    line-height: 1.45;
+    margin-bottom: 6px;
   }
-  .delay-card .delay-alt-value {
-    font-size: 17px;
+  .wait-flip .flip-value {
+    font-size: 20px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--accent);
-    margin-top: 4px;
     line-height: 1.2;
+    margin-bottom: 3px;
   }
-  .delay-card .delay-alt-extra {
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
+  .wait-flip .flip-extra {
+    font-size: 12.5px;
     font-weight: 500;
     color: var(--accent);
-    margin-top: 3px;
+    font-variant-numeric: tabular-nums;
   }
 
   /* Totals */
@@ -527,17 +573,22 @@
     <h2>The price tag</h2>
     <div class="pricetag">
 
-      <div class="pt-input">
-        <span class="lbl">Current savings</span>
-        <input id="savings-slider" type="range" min="0" max="200000" step="500" value="0" aria-label="Current savings slider">
-        <span class="unit">$</span>
-        <input id="savings-num" type="text" inputmode="numeric" value="0">
-      </div>
-
-      <div class="pt-input">
-        <span class="lbl">Age to start</span>
-        <input id="age-scrubber" type="range" min="18" max="40" step="1" value="20" aria-label="Starting age scrubber">
-        <span class="value-pill" id="age-display">20</span>
+      <div class="pt-fields">
+        <div class="pt-field">
+          <span class="lbl">Current savings</span>
+          <div class="input-line">
+            <span class="prefix">$</span>
+            <input id="savings-num" type="text" inputmode="numeric" value="0">
+          </div>
+        </div>
+        <div class="pt-field">
+          <span class="lbl">Age to start</span>
+          <div class="age-stepper">
+            <button type="button" id="age-minus" aria-label="Decrease age">−</button>
+            <span class="age-num" id="age-display">20</span>
+            <button type="button" id="age-plus" aria-label="Increase age">+</button>
+          </div>
+        </div>
       </div>
 
       <div class="pt-divider"></div>
@@ -563,28 +614,29 @@
 
       <div class="pt-divider"></div>
 
-      <div class="delay-row">
-        <div class="delay-card warn5">
-          <div class="delay-lbl">Wait 5 years</div>
-          <div class="delay-sub" id="delay5-sub">Start at 25 instead</div>
-          <div class="delay-value" id="delay5-value">$0/mo</div>
-          <div class="delay-extra" id="delay5-extra">+$0 more every month</div>
-          <div class="delay-total" id="delay5-total">$0 total</div>
-          <div class="delay-total-extra" id="delay5-total-extra">+$0 out of pocket</div>
-          <div class="delay-alt-title" id="delay5-alt-title">Or pay it now instead</div>
-          <div class="delay-alt-value" id="delay5-alt-value">$0/year retirement</div>
-          <div class="delay-alt-extra" id="delay5-alt-extra">+$0 more every year</div>
+      <div class="wait-tabs" role="tablist">
+        <button class="wait-tab active" type="button" data-years="5">Wait 5 years</button>
+        <button class="wait-tab" type="button" data-years="10">Wait 10 years</button>
+        <button class="wait-tab" type="button" data-years="15">Wait 15 years</button>
+      </div>
+      <div class="wait-card">
+        <div class="wait-sub" id="wait-sub">Start at 25 instead</div>
+        <div class="wait-grid">
+          <div class="wait-col">
+            <div class="col-lbl">Monthly</div>
+            <div class="col-value" id="wait-monthly">$0/mo</div>
+            <div class="col-extra" id="wait-monthly-extra">+$0 every month</div>
+          </div>
+          <div class="wait-col">
+            <div class="col-lbl">Lifetime</div>
+            <div class="col-value" id="wait-total">$0 total</div>
+            <div class="col-extra" id="wait-total-extra">+$0 out of pocket</div>
+          </div>
         </div>
-        <div class="delay-card warn10">
-          <div class="delay-lbl">Wait 10 years</div>
-          <div class="delay-sub" id="delay10-sub">Start at 30 instead</div>
-          <div class="delay-value" id="delay10-value">$0/mo</div>
-          <div class="delay-extra" id="delay10-extra">+$0 more every month</div>
-          <div class="delay-total" id="delay10-total">$0 total</div>
-          <div class="delay-total-extra" id="delay10-total-extra">+$0 out of pocket</div>
-          <div class="delay-alt-title" id="delay10-alt-title">Or pay it now instead</div>
-          <div class="delay-alt-value" id="delay10-alt-value">$0/year retirement</div>
-          <div class="delay-alt-extra" id="delay10-alt-extra">+$0 more every year</div>
+        <div class="wait-flip">
+          <div class="flip-title" id="wait-flip-title">If you start now and bump up later</div>
+          <div class="flip-value" id="wait-flip-value">$0/year in retirement</div>
+          <div class="flip-extra" id="wait-flip-extra">+$0 every year for life</div>
         </div>
       </div>
     </div>
@@ -667,7 +719,7 @@
       <div class="chart-canvas-wrap">
         <canvas id="main-chart"></canvas>
       </div>
-      <p class="chart-caption">All three portfolios end up at the same retirement target. The dashed early portion of the wait-5 and wait-10 paths is just the starting balance compounding on its own before any contributions begin. The number on the right of each line is the required monthly contribution.</p>
+      <p class="chart-caption">Both portfolios end at the same target. The dashed portion of the wait line is the starting balance compounding on its own before contributions begin. The number on the right of each line is the required monthly contribution. Toggle the tabs above to compare different waiting periods.</p>
     </div>
   </section>
 
@@ -777,6 +829,9 @@ const state = {
   rRet: 0.04,
   inflation: 0.03,
   scrubAge: 20,
+  scrubMin: 18,
+  scrubMax: 40,
+  waitYears: 5,
   cmpA: 20,
   cmpB: 26,
   nominal: false,
@@ -924,18 +979,51 @@ function bindCurrencyPair(sliderId, numId, key) {
   n.value = state[key].toLocaleString('en-US');
 }
 
-bindCurrencyPair('savings-slider', 'savings-num', 'savings');
-bindCurrencyPair('income-slider',  'income-num',  'income');
+// Single text input (no slider) for current savings.
+function bindCurrencyText(numId, key) {
+  const n = document.getElementById(numId);
+  n.addEventListener('input', e => {
+    const raw = e.target.value.replace(/[^\d]/g, '');
+    state[key] = parseInt(raw, 10) || 0;
+    recompute();
+  });
+  n.addEventListener('blur',  () => { n.value = state[key].toLocaleString('en-US'); });
+  n.addEventListener('focus', () => { n.value = state[key].toString(); });
+  n.value = state[key].toLocaleString('en-US');
+}
+bindCurrencyText('savings-num', 'savings');
+bindCurrencyPair('income-slider', 'income-num', 'income');
 bindPair('ret-start-slider', 'ret-start-num', 'retStartAge');
 bindPair('plan-end-slider',  'plan-end-num',  'planEndAge');
 bindPair('ret-acc-slider',   'ret-acc-num',   'rAccum',    0.01);
 bindPair('ret-ret-slider',   'ret-ret-num',   'rRet',      0.01);
 bindPair('inflation-slider', 'inflation-num', 'inflation', 0.01);
 
-document.getElementById('age-scrubber').addEventListener('input', e => {
-  state.scrubAge = parseInt(e.target.value, 10);
-  document.getElementById('age-display').textContent = state.scrubAge;
-  recompute();
+// Age stepper (replaces the slider)
+const ageMinus = document.getElementById('age-minus');
+const agePlus  = document.getElementById('age-plus');
+const ageDisplay = document.getElementById('age-display');
+function refreshAgeStepper() {
+  ageDisplay.textContent = state.scrubAge;
+  ageMinus.disabled = state.scrubAge <= state.scrubMin;
+  agePlus.disabled  = state.scrubAge >= state.scrubMax;
+}
+ageMinus.addEventListener('click', () => {
+  if (state.scrubAge > state.scrubMin) { state.scrubAge--; refreshAgeStepper(); recompute(); }
+});
+agePlus.addEventListener('click', () => {
+  if (state.scrubAge < state.scrubMax) { state.scrubAge++; refreshAgeStepper(); recompute(); }
+});
+refreshAgeStepper();
+
+// Wait tabs
+document.querySelectorAll('.wait-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.wait-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.waitYears = parseInt(btn.dataset.years, 10);
+    recompute();
+  });
 });
 
 document.getElementById('compare-a').addEventListener('input', e => {
@@ -964,8 +1052,7 @@ document.getElementById('nominal-toggle').addEventListener('change', e => {
 
 const FUND_COLORS = [
   { main: '#0b6e6e', fill: 'rgba(11,110,110,0.10)' }, // start now (teal)
-  { main: '#cb7e2e', fill: 'rgba(203,126,46,0.10)' }, // wait 5  (amber)
-  { main: '#8b3a1b', fill: 'rgba(139,58,27,0.10)' },  // wait 10 (rust)
+  { main: '#b85c2e', fill: 'rgba(184,92,46,0.10)' },  // wait    (rust)
 ];
 
 // Build the {x: age, y: balance} time series for a single scenario.
@@ -1078,17 +1165,12 @@ const monthlyLabelPlugin = {
   }
 };
 
-// Segment styling: dashed and thinner during the pre-contribution phase.
-function segmentStyle(idx) {
+// Dataset 0 is "Start now" (offset 0, always solid). Dataset 1 is the
+// selected wait scenario; its pre-contribution segments are dashed.
+function segmentStyle(getStartAge) {
   return {
-    borderDash: ctx => {
-      const startAge = state.scrubAge + idx * 5;
-      return ctx.p0.parsed.x < startAge - 1e-9 ? [4, 4] : undefined;
-    },
-    borderWidth: ctx => {
-      const startAge = state.scrubAge + idx * 5;
-      return ctx.p0.parsed.x < startAge - 1e-9 ? 1.4 : 2.2;
-    },
+    borderDash: ctx => ctx.p0.parsed.x < getStartAge() - 1e-9 ? [4, 4] : undefined,
+    borderWidth: ctx => ctx.p0.parsed.x < getStartAge() - 1e-9 ? 1.4 : 2.2,
   };
 }
 
@@ -1096,19 +1178,28 @@ const chart = new Chart(document.getElementById('main-chart').getContext('2d'), 
   type: 'line',
   plugins: [targetLinePlugin, monthlyLabelPlugin],
   data: {
-    datasets: [0, 1, 2].map(i => ({
-      label: '',
-      data: [],
-      borderColor: FUND_COLORS[i].main,
-      backgroundColor: FUND_COLORS[i].fill,
-      pointRadius: 0,
-      pointHoverRadius: 4,
-      borderWidth: 2.2,
-      tension: 0.15,
-      fill: false,
-      segment: segmentStyle(i),
-      _monthly: null,
-    })),
+    datasets: [
+      {
+        label: '',
+        data: [],
+        borderColor: FUND_COLORS[0].main,
+        backgroundColor: FUND_COLORS[0].fill,
+        pointRadius: 0, pointHoverRadius: 4,
+        borderWidth: 2.2, tension: 0.15, fill: false,
+        segment: segmentStyle(() => state.scrubAge),
+        _monthly: null,
+      },
+      {
+        label: '',
+        data: [],
+        borderColor: FUND_COLORS[1].main,
+        backgroundColor: FUND_COLORS[1].fill,
+        pointRadius: 0, pointHoverRadius: 4,
+        borderWidth: 2.2, tension: 0.15, fill: false,
+        segment: segmentStyle(() => state.scrubAge + state.waitYears),
+        _monthly: null,
+      },
+    ],
   },
   options: {
     responsive: true,
@@ -1173,30 +1264,24 @@ const chart = new Chart(document.getElementById('main-chart').getContext('2d'), 
 // ── Recompute / render ──────────────────────────────────────────────────
 
 function recompute() {
-  // Chart: three portfolio-growth trajectories.
-  const t0 = trajectory(state.scrubAge);
-  const t5 = trajectory(state.scrubAge + 5);
-  const t10 = trajectory(state.scrubAge + 10);
+  // Chart: two trajectories — start now, and the selected wait scenario.
+  const t0    = trajectory(state.scrubAge);
+  const tWait = trajectory(state.scrubAge + state.waitYears);
 
   chart.data.datasets[0].label = `Start at ${state.scrubAge}`;
   chart.data.datasets[0].data = t0.points;
   chart.data.datasets[0]._monthly = t0.monthly;
 
-  chart.data.datasets[1].label = `Start at ${state.scrubAge + 5}`;
-  chart.data.datasets[1].data = t5.points;
-  chart.data.datasets[1]._monthly = t5.monthly;
-
-  chart.data.datasets[2].label = `Start at ${state.scrubAge + 10}`;
-  chart.data.datasets[2].data = t10.points;
-  chart.data.datasets[2]._monthly = t10.monthly;
+  chart.data.datasets[1].label = `Start at ${state.scrubAge + state.waitYears}`;
+  chart.data.datasets[1].data = tWait.points;
+  chart.data.datasets[1]._monthly = tWait.monthly;
 
   chart.$target = t0.target;
   chart.update('none');
 
-  // Headline numbers
-  const sel    = priceAtAge(state.scrubAge);
-  const sel5   = priceAtAge(state.scrubAge + 5);
-  const sel10  = priceAtAge(state.scrubAge + 10);
+  // Headline
+  const sel     = priceAtAge(state.scrubAge);
+  const selWait = priceAtAge(state.scrubAge + state.waitYears);
 
   document.getElementById('income-display').textContent = fmtMoney(
     state.nominal ? toNominal(state.income, state.retStartAge - state.scrubAge, state.inflation) : state.income
@@ -1205,61 +1290,34 @@ function recompute() {
   document.getElementById('total-oop').textContent       = fmtMoney(sel.displayContrib);
   document.getElementById('total-growth').textContent    = fmtMoney(Math.max(0, sel.displayGrowth ?? 0));
 
-  // Delay penalty cards. Compute the extra-per-month using rounded
-  // numbers so the displayed arithmetic matches the visible figures.
-  const baseMonthly  = sel.displayMonthly == null  ? null : Math.round(sel.displayMonthly);
-  const m5  = sel5.displayMonthly  == null ? null : Math.round(sel5.displayMonthly);
-  const m10 = sel10.displayMonthly == null ? null : Math.round(sel10.displayMonthly);
+  // Wait card. Rounded values keep the displayed math internally consistent.
+  const baseM   = sel.displayMonthly  == null ? null : Math.round(sel.displayMonthly);
+  const baseTot = sel.displayContrib  == null ? null : Math.round(sel.displayContrib);
+  const mWait   = selWait.displayMonthly == null ? null : Math.round(selWait.displayMonthly);
+  const tWaitTotal = selWait.displayContrib == null ? null : Math.round(selWait.displayContrib);
+  const monthExtra = (mWait     == null || baseM   == null) ? null : mWait     - baseM;
+  const totExtra   = (tWaitTotal == null || baseTot == null) ? null : tWaitTotal - baseTot;
 
-  document.getElementById('delay5-sub').textContent  = `Start at ${state.scrubAge + 5} instead`;
-  document.getElementById('delay10-sub').textContent = `Start at ${state.scrubAge + 10} instead`;
+  document.getElementById('wait-sub').textContent = `Start at ${state.scrubAge + state.waitYears} instead`;
+  document.getElementById('wait-monthly').textContent       = (mWait == null) ? '—' : `$${mWait.toLocaleString('en-US')}/mo`;
+  document.getElementById('wait-monthly-extra').textContent = (monthExtra == null) ? '' : `+$${monthExtra.toLocaleString('en-US')} every month`;
+  document.getElementById('wait-total').textContent         = (tWaitTotal == null) ? '—' : `$${tWaitTotal.toLocaleString('en-US')} total`;
+  document.getElementById('wait-total-extra').textContent   = (totExtra == null) ? '' : `+$${totExtra.toLocaleString('en-US')} out of pocket`;
 
-  document.getElementById('delay5-value').textContent  = (m5  == null) ? '—' : '$' + m5.toLocaleString('en-US')  + '/mo';
-  document.getElementById('delay10-value').textContent = (m10 == null) ? '—' : '$' + m10.toLocaleString('en-US') + '/mo';
-
-  const extra5  = (m5  == null || baseMonthly == null) ? null : m5  - baseMonthly;
-  const extra10 = (m10 == null || baseMonthly == null) ? null : m10 - baseMonthly;
-  document.getElementById('delay5-extra').textContent  = (extra5  == null) ? '' : `+$${extra5.toLocaleString('en-US')} more every month`;
-  document.getElementById('delay10-extra').textContent = (extra10 == null) ? '' : `+$${extra10.toLocaleString('en-US')} more every month`;
-
-  // Total contributed (lifetime out of pocket) per scenario, plus the gap
-  // versus starting now.
-  const baseTotal = sel.displayContrib  == null ? null : Math.round(sel.displayContrib);
-  const tot5      = sel5.displayContrib  == null ? null : Math.round(sel5.displayContrib);
-  const tot10     = sel10.displayContrib == null ? null : Math.round(sel10.displayContrib);
-  const totExtra5  = (tot5  == null || baseTotal == null) ? null : tot5  - baseTotal;
-  const totExtra10 = (tot10 == null || baseTotal == null) ? null : tot10 - baseTotal;
-  document.getElementById('delay5-total').textContent  = (tot5  == null) ? '—' : `$${tot5.toLocaleString('en-US')} total`;
-  document.getElementById('delay10-total').textContent = (tot10 == null) ? '—' : `$${tot10.toLocaleString('en-US')} total`;
-  document.getElementById('delay5-total-extra').textContent  = (totExtra5  == null) ? '' : `+$${totExtra5.toLocaleString('en-US')} out of pocket`;
-  document.getElementById('delay10-total-extra').textContent = (totExtra10 == null) ? '' : `+$${totExtra10.toLocaleString('en-US')} out of pocket`;
-
-  // The flip: instead of waiting, you start NOW at the baseline rate and
-  // bump up to the wait-scenario rate at age +5 (or +10). Those few years
-  // of "small" early contributions compound for decades, and the resulting
-  // retirement income is meaningfully higher — for life.
+  // The flip: start now at the baseline, bump up to the wait rate at the
+  // wait age. The few years of early contributions compound for decades.
   const yearsToRet = state.retStartAge - state.scrubAge;
   const incomeDisp = state.nominal ? toNominal(state.income, yearsToRet, state.inflation) : state.income;
-  const altRaw5  = altIncomeBumped(sel.monthly, sel5.monthly,  5);
-  const altRaw10 = altIncomeBumped(sel.monthly, sel10.monthly, 10);
-  const alt5  = (altRaw5  == null) ? null : (state.nominal ? toNominal(altRaw5,  yearsToRet, state.inflation) : altRaw5);
-  const alt10 = (altRaw10 == null) ? null : (state.nominal ? toNominal(altRaw10, yearsToRet, state.inflation) : altRaw10);
-  const altExtra5  = (alt5  == null) ? null : Math.round(alt5)  - Math.round(incomeDisp);
-  const altExtra10 = (alt10 == null) ? null : Math.round(alt10) - Math.round(incomeDisp);
+  const altRaw = altIncomeBumped(sel.monthly, selWait.monthly, state.waitYears);
+  const alt    = (altRaw == null) ? null : (state.nominal ? toNominal(altRaw, yearsToRet, state.inflation) : altRaw);
+  const altExtra = (alt == null) ? null : Math.round(alt) - Math.round(incomeDisp);
 
-  const baseM = baseMonthly;
-  const hasAlt5  = m5  != null && m5  > 0 && baseM != null;
-  const hasAlt10 = m10 != null && m10 > 0 && baseM != null;
-  const bumpAge5  = state.scrubAge + 5;
-  const bumpAge10 = state.scrubAge + 10;
-  document.getElementById('delay5-alt-title').textContent  = hasAlt5
-    ? `If you start now at $${baseM.toLocaleString('en-US')}/mo and bump to $${m5.toLocaleString('en-US')}/mo at ${bumpAge5}`  : '';
-  document.getElementById('delay10-alt-title').textContent = hasAlt10
-    ? `If you start now at $${baseM.toLocaleString('en-US')}/mo and bump to $${m10.toLocaleString('en-US')}/mo at ${bumpAge10}` : '';
-  document.getElementById('delay5-alt-value').textContent  = (hasAlt5  && alt5  != null) ? `$${Math.round(alt5 ).toLocaleString('en-US')}/year in retirement` : '';
-  document.getElementById('delay10-alt-value').textContent = (hasAlt10 && alt10 != null) ? `$${Math.round(alt10).toLocaleString('en-US')}/year in retirement` : '';
-  document.getElementById('delay5-alt-extra').textContent  = (hasAlt5  && altExtra5  != null) ? `+$${altExtra5.toLocaleString('en-US')} every year for life`  : '';
-  document.getElementById('delay10-alt-extra').textContent = (hasAlt10 && altExtra10 != null) ? `+$${altExtra10.toLocaleString('en-US')} every year for life` : '';
+  const hasFlip = mWait != null && mWait > 0 && baseM != null;
+  document.getElementById('wait-flip-title').textContent = hasFlip
+    ? `If you start now at $${baseM.toLocaleString('en-US')}/mo and bump to $${mWait.toLocaleString('en-US')}/mo at ${state.scrubAge + state.waitYears}`
+    : 'Not enough time left to model this scenario.';
+  document.getElementById('wait-flip-value').textContent = (hasFlip && alt != null) ? `$${Math.round(alt).toLocaleString('en-US')}/year in retirement` : '';
+  document.getElementById('wait-flip-extra').textContent = (hasFlip && altExtra != null) ? `+$${altExtra.toLocaleString('en-US')} every year for life` : '';
 
   // Comparison
   const pa = priceAtAge(state.cmpA);
