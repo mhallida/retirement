@@ -855,7 +855,7 @@
           <span class="lbl">Age to start</span>
           <div class="age-stepper">
             <button type="button" id="age-minus" aria-label="Decrease age">−</button>
-            <input id="age-num" class="age-num" type="number" min="18" max="70" step="1" value="20" aria-label="Age to start" inputmode="numeric">
+            <input id="age-num" class="age-num" type="number" min="0" max="70" step="1" value="20" aria-label="Age to start" inputmode="numeric">
             <button type="button" id="age-plus" aria-label="Increase age">+</button>
           </div>
         </div>
@@ -1229,7 +1229,7 @@ const state = {
   rRet: 0.04,
   inflation: 0.03,
   scrubAge: 20,
-  scrubMin: 18,
+  scrubMin: 0,
   scrubMax: 70,
   waitYears: 5,
   nominal: false,
