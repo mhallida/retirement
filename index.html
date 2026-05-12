@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Price of Waiting</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --panel: #ffffff;
+    --text: #1a1a1a;
+    --text-soft: #555555;
+    --text-faint: #8a8a87;
+    --border: #e8e8e3;
+    --border-soft: #f0f0eb;
+    --accent: #0b6e6e;
+    --accent-soft: #e7f0ef;
+    --warm: #b85c2e;
+    --warm-soft: #f7ebe3;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .wrap {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 72px 28px 96px;
+  }
+
+  /* Hero */
+  .hero { margin-bottom: 64px; }
+  .hero h1 {
+    font-size: 46px;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    margin: 0 0 14px;
+    line-height: 1.05;
+  }
+  .hero .sub {
+    font-size: 20px;
+    color: var(--text-soft);
+    margin: 0;
+    max-width: 580px;
+    line-height: 1.45;
+  }
+  @media (max-width: 540px) {
+    .hero h1 { font-size: 34px; }
+    .hero .sub { font-size: 17px; }
+  }
+
+  /* Sections */
+  .section { margin-bottom: 64px; }
+  .section h2 {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 22px;
+  }
+
+  /* Inputs */
+  .inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px 44px;
+  }
+  @media (max-width: 640px) {
+    .inputs { grid-template-columns: 1fr; gap: 28px; }
+  }
+  .input-row label.input-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+  .input-row .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .input-row input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .input-row input[type=number] {
+    width: 96px;
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 4px;
+    text-align: right;
+    color: var(--text);
+  }
+  .input-row input[type=number]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .input-row .unit {
+    color: var(--text-faint);
+    font-size: 14px;
+    width: 12px;
+    text-align: center;
+  }
+  .input-row .help {
+    font-size: 13px;
+    color: var(--text-faint);
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  .nominal-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-soft);
+    margin-top: 24px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .nominal-toggle input { cursor: pointer; accent-color: var(--accent); }
+
+  .inflation-row { display: none; }
+  .inflation-row.show { display: block; }
+
+  /* Price tag card */
+  .pricetag {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 36px 36px 30px;
+  }
+  @media (max-width: 540px) { .pricetag { padding: 24px 22px; } }
+
+  .scrubber {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .scrubber .lbl {
+    font-size: 14px;
+    color: var(--text-soft);
+    white-space: nowrap;
+  }
+  .scrubber input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .scrubber .age-display {
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--text);
+    min-width: 28px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .headline {
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+    line-height: 1.35;
+    color: var(--text);
+  }
+  .headline .big {
+    font-size: 56px;
+    font-weight: 600;
+    color: var(--accent);
+    display: block;
+    line-height: 1;
+    margin: 6px 0 8px;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 540px) {
+    .headline { font-size: 18px; }
+    .headline .big { font-size: 40px; }
+  }
+
+  .substats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-top: 24px;
+    padding-top: 22px;
+    border-top: 1px solid var(--border-soft);
+  }
+  @media (max-width: 540px) {
+    .substats { grid-template-columns: 1fr; gap: 14px; }
+  }
+  .stat .lbl {
+    font-size: 11px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .stat .val {
+    font-size: 22px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+
+  /* Chart */
+  .chart-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 26px 24px 22px;
+  }
+  .chart-canvas-wrap {
+    position: relative;
+    height: 380px;
+  }
+  @media (max-width: 540px) { .chart-canvas-wrap { height: 320px; } }
+  .chart-caption {
+    font-size: 13px;
+    color: var(--text-faint);
+    margin: 16px 4px 0;
+    line-height: 1.55;
+  }
+
+  /* Comparison */
+  .compare {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 30px;
+  }
+  @media (max-width: 540px) { .compare { padding: 22px; } }
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 580px) {
+    .compare-grid { grid-template-columns: 1fr; gap: 20px; }
+  }
+  .compare-card .age-input {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .compare-card .age-input span {
+    font-size: 14px;
+    color: var(--text-soft);
+  }
+  .compare-card .age-input input {
+    width: 64px;
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font: inherit;
+    font-size: 20px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text);
+  }
+  .compare-card .age-input input:focus { outline: none; border-color: var(--accent); }
+  .compare-card .lines {
+    font-size: 15px;
+    line-height: 1.75;
+  }
+  .compare-card .lines .v {
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .compare-card .lines .key { color: var(--text-faint); }
+
+  .compare-takeaway {
+    padding: 18px 22px;
+    background: var(--warm-soft);
+    border-radius: 6px;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+  .compare-takeaway strong {
+    color: var(--warm);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Explainers */
+  details {
+    border-top: 1px solid var(--border);
+    padding: 18px 0;
+  }
+  details:last-of-type { border-bottom: 1px solid var(--border); }
+  details > summary {
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text);
+  }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::after {
+    content: "+";
+    color: var(--text-faint);
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1;
+    margin-left: 16px;
+  }
+  details[open] > summary::after { content: "–"; }
+  details > .body {
+    padding: 14px 0 2px;
+    color: var(--text-soft);
+    font-size: 15px;
+    line-height: 1.7;
+    max-width: 680px;
+  }
+  details > .body p { margin: 0 0 12px; }
+  details > .body p:last-child { margin-bottom: 0; }
+  details > .body em { color: var(--text); font-style: italic; }
+  details > .body ul { margin: 4px 0 12px; padding-left: 22px; }
+  details > .body li { margin-bottom: 6px; }
+
+  .doubling {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--accent-soft);
+    padding: 12px 14px;
+    border-radius: 4px;
+    margin: 10px 0 14px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  footer {
+    margin-top: 80px;
+    padding-top: 28px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-faint);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── Hero ─────────────────────────────────────────────────────────── -->
+  <header class="hero">
+    <h1>What does retirement cost?</h1>
+    <p class="sub">The price depends almost entirely on when you start.</p>
+  </header>
+
+  <!-- ── Inputs ───────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>Your assumptions</h2>
+    <div class="inputs">
+      <div class="input-row">
+        <label class="input-label" for="income-num">Annual retirement income</label>
+        <div class="controls">
+          <input id="income-slider" type="range" min="40000" max="500000" step="5000" value="200000" aria-label="Annual retirement income slider">
+          <span class="unit">$</span>
+          <input id="income-num" type="number" min="0" step="1000" value="200000">
+        </div>
+        <div class="help">In today's dollars. What you want to spend each year once you stop working.</div>
+      </div>
+
+      <div class="input-row">
+        <label class="input-label" for="ret-start-num">Retirement start age</label>
+        <div class="controls">
+          <input id="ret-start-slider" type="range" min="50" max="75" step="0.5" value="59.5" aria-label="Retirement start age slider">
+          <input id="ret-start-num" type="number" min="50" max="75" step="0.5" value="59.5">
+        </div>
+        <div class="help">When you stop earning and start drawing down. 59½ is when most retirement accounts unlock penalty-free.</div>
+      </div>
+
+      <div class="input-row">
+        <label class="input-label" for="plan-end-num">Plan through age</label>
+        <div class="controls">
+          <input id="plan-end-slider" type="range" min="70" max="105" step="1" value="90" aria-label="Plan through age slider">
+          <input id="plan-end-num" type="number" min="70" max="105" step="1" value="90">
+        </div>
+        <div class="help">How long the money needs to last. Most healthy people who reach 65 live well past 80.</div>
+      </div>
+
+      <div class="input-row">
+        <label class="input-label" for="savings-num">Current savings</label>
+        <div class="controls">
+          <input id="savings-slider" type="range" min="0" max="200000" step="500" value="0" aria-label="Current savings slider">
+          <span class="unit">$</span>
+          <input id="savings-num" type="number" min="0" step="100" value="0">
+        </div>
+        <div class="help">What you already have invested for retirement. It compounds alongside future contributions.</div>
+      </div>
+
+      <div class="input-row">
+        <label class="input-label" for="ret-acc-num">Expected return — while saving</label>
+        <div class="controls">
+          <input id="ret-acc-slider" type="range" min="2" max="12" step="0.1" value="7" aria-label="Accumulation return slider">
+          <input id="ret-acc-num" type="number" min="0" max="20" step="0.1" value="7">
+          <span class="unit">%</span>
+        </div>
+        <div class="help">Real (after-inflation) annual return while you're invested. 7% is roughly the long-run S&amp;P 500 minus inflation.</div>
+      </div>
+
+      <div class="input-row">
+        <label class="input-label" for="ret-ret-num">Expected return — in retirement</label>
+        <div class="controls">
+          <input id="ret-ret-slider" type="range" min="0" max="8" step="0.1" value="4" aria-label="Retirement return slider">
+          <input id="ret-ret-num" type="number" min="0" max="20" step="0.1" value="4">
+          <span class="unit">%</span>
+        </div>
+        <div class="help">Real return during drawdown. Lower because portfolios usually shift toward bonds as you age.</div>
+      </div>
+
+      <div class="input-row inflation-row" id="inflation-row">
+        <label class="input-label" for="inflation-num">Inflation rate</label>
+        <div class="controls">
+          <input id="inflation-slider" type="range" min="0" max="8" step="0.1" value="3" aria-label="Inflation rate slider">
+          <input id="inflation-num" type="number" min="0" max="15" step="0.1" value="3">
+          <span class="unit">%</span>
+        </div>
+        <div class="help">Used only to convert today's dollars into nominal future dollars.</div>
+      </div>
+    </div>
+
+    <label class="nominal-toggle">
+      <input type="checkbox" id="nominal-toggle"> Show numbers in future (nominal) dollars
+    </label>
+  </section>
+
+  <!-- ── Price tag ────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>The price tag</h2>
+    <div class="pricetag">
+      <div class="scrubber">
+        <span class="lbl">If you start at age</span>
+        <span class="age-display" id="age-display">20</span>
+        <input id="age-scrubber" type="range" min="18" max="45" step="1" value="20" aria-label="Starting age scrubber">
+      </div>
+      <div class="headline">
+        you'll need to contribute
+        <span class="big" id="monthly-headline">$0</span>
+        every month from now until retirement.
+      </div>
+      <div class="substats">
+        <div class="stat">
+          <div class="lbl">Total out of pocket</div>
+          <div class="val" id="total-oop">$0</div>
+        </div>
+        <div class="stat">
+          <div class="lbl">Compounding does the rest</div>
+          <div class="val" id="total-growth">$0</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Chart ────────────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>The whole curve</h2>
+    <div class="chart-wrap">
+      <div class="chart-canvas-wrap">
+        <canvas id="main-chart"></canvas>
+      </div>
+      <p class="chart-caption">Each point is what it would cost you, starting at that age, to fund the same retirement. The lifetime out-of-pocket curve is the one that should rattle you.</p>
+    </div>
+  </section>
+
+  <!-- ── Comparison ───────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>The cost of a few years</h2>
+    <div class="compare">
+      <div class="compare-grid">
+        <div class="compare-card">
+          <div class="age-input">
+            <span>Start at age</span>
+            <input type="number" id="compare-a" min="18" max="60" value="20">
+          </div>
+          <div class="lines">
+            <div><span class="key">Monthly:</span> <span class="v" id="compare-a-month">$0</span></div>
+            <div><span class="key">Total out of pocket:</span> <span class="v" id="compare-a-total">$0</span></div>
+          </div>
+        </div>
+        <div class="compare-card">
+          <div class="age-input">
+            <span>Start at age</span>
+            <input type="number" id="compare-b" min="18" max="60" value="26">
+          </div>
+          <div class="lines">
+            <div><span class="key">Monthly:</span> <span class="v" id="compare-b-month">$0</span></div>
+            <div><span class="key">Total out of pocket:</span> <span class="v" id="compare-b-total">$0</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="compare-takeaway" id="compare-takeaway">
+        Waiting <strong>6 years</strong> costs you an extra <strong>$0</strong> over your career — for the same retirement.
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Explainers ───────────────────────────────────────────────────── -->
+  <section class="section">
+    <h2>How any of this works</h2>
+
+    <details open>
+      <summary>Why everything is in today's dollars</summary>
+      <div class="body">
+        <p>A 19-year-old looking at "$200,000 a year in 2065 dollars" is staring at a number that's been mangled by decades of inflation. It doesn't feel like anything.</p>
+        <p>So this tool uses <em>real</em> returns — the part of the return that's left after inflation. The dollar amounts you see represent the same purchasing power as today. If you want the inflated nominal numbers anyway, toggle the option in the inputs.</p>
+      </div>
+    </details>
+
+    <details open>
+      <summary>Where 7% comes from</summary>
+      <div class="body">
+        <p>The U.S. stock market has returned roughly 10% per year on average over the last century. Inflation has run around 3%. The difference — about 7% — is the real return: the part that actually grows your purchasing power.</p>
+        <p>Past performance is not a promise. Markets can underperform for a decade or more. But over 40-year horizons, the spread between equities and inflation has been remarkably stable.</p>
+      </div>
+    </details>
+
+    <details open>
+      <summary>The 4% rule</summary>
+      <div class="body">
+        <p>The widely-cited "4% rule" says a retiree can withdraw 4% of their starting balance each year, adjusted for inflation, and have a high probability of not running out of money over a 30-year retirement.</p>
+        <p>It implies a balanced portfolio earning roughly 4% real return during drawdown, which is the default here. Adjust it down if you plan to be more conservative or live longer.</p>
+      </div>
+    </details>
+
+    <details open>
+      <summary>What compounding actually is</summary>
+      <div class="body">
+        <p>Compounding is when your gains start earning their own gains. A dollar invested at 7% real return doesn't just grow — it accelerates.</p>
+        <div class="doubling">$1 → $2 → $4 → $8 → $16 → $32 → $64 → $128</div>
+        <p>That's $1 doubling about every ten years at 7%. Forty years of compounding turns a dollar into roughly $15. Twenty years turns it into about $4. The early years are where the magic builds — which is why <em>when</em> you start matters more than <em>how much</em> you contribute.</p>
+      </div>
+    </details>
+
+    <details open>
+      <summary>What this doesn't include</summary>
+      <div class="body">
+        <p>A lot. This is a teaching tool, not a financial plan. It doesn't model:</p>
+        <ul>
+          <li>Taxes (contributions and withdrawals are taxed very differently across account types)</li>
+          <li>Social Security (will likely cover a meaningful chunk of your retirement income)</li>
+          <li>Employer 401(k) match (free money — do not leave it on the table)</li>
+          <li>Sequence-of-returns risk (a bad decade right after you retire is much worse than the same bad decade in the middle)</li>
+          <li>Rising contributions as your income grows (most people contribute more in their forties than in their twenties)</li>
+        </ul>
+        <p>The point isn't precision. It's to show, in one chart, what waiting actually costs.</p>
+      </div>
+    </details>
+  </section>
+
+  <footer>Built to make a point, not to give financial advice.</footer>
+</div>
+
+<script>
+// ─── The Price of Waiting ─────────────────────────────────────────────────
+// All math runs in REAL (inflation-adjusted, today's-dollar) terms.
+// Nominal-dollar display is a presentation layer on top of the real numbers.
+
+const fmt0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const fmtMoney = v => (v == null || !isFinite(v) || isNaN(v)) ? '—' : fmt0.format(Math.round(v));
+
+// State holds every user-controllable input. recompute() runs on every change.
+const state = {
+  income: 200000,
+  retStartAge: 59.5,
+  planEndAge: 90,
+  savings: 0,
+  rAccum: 0.07,    // stored as decimal
+  rRet: 0.04,
+  inflation: 0.03,
+  scrubAge: 20,
+  cmpA: 20,
+  cmpB: 26,
+  nominal: false,
+};
+
+// ── Math ────────────────────────────────────────────────────────────────
+
+// Present value of an annuity: how much you need at retirement to support
+// `payment` per year for `years` years at real return `r`.
+function pvAnnuity(payment, r, years) {
+  if (years <= 0) return 0;
+  if (r === 0) return payment * years;
+  return payment * (1 - Math.pow(1 + r, -years)) / r;
+}
+
+// Required monthly contribution to reach `target` in `years` years,
+// starting from `currentBalance` that compounds at annual real return `rAccum`.
+// Contributions are end-of-month for `years` * 12 months.
+function requiredMonthly(target, years, currentBalance, rAccum) {
+  if (years <= 0) return null;
+  const fvOfStart = currentBalance * Math.pow(1 + rAccum, years);
+  const remaining = target - fvOfStart;
+  if (remaining <= 0) return 0;
+  const m = years * 12;
+  const i = Math.pow(1 + rAccum, 1 / 12) - 1; // monthly real rate
+  if (i === 0) return remaining / m;
+  return remaining * i / (Math.pow(1 + i, m) - 1);
+}
+
+// Inflate a real-dollar amount to nominal dollars `years` from now.
+function toNominal(realDollars, years, infl) {
+  return realDollars * Math.pow(1 + infl, years);
+}
+
+// Full per-age bundle. Returns both real and display amounts.
+function priceAtAge(startAge) {
+  const years = state.retStartAge - startAge;
+  const drawdownYears = state.planEndAge - state.retStartAge;
+  const target = pvAnnuity(state.income, state.rRet, drawdownYears);
+  const monthly = requiredMonthly(target, years, state.savings, state.rAccum);
+
+  if (monthly === null) {
+    return { years, target, monthly: null, totalContrib: null, growth: null,
+             displayMonthly: null, displayContrib: null, displayGrowth: null };
+  }
+
+  const totalContrib = monthly * 12 * years;
+  const growth = target - state.savings - totalContrib;
+
+  let displayMonthly = monthly;
+  let displayContrib = totalContrib;
+  let displayGrowth  = growth;
+
+  if (state.nominal) {
+    // For a flat-real contribution stream, the nominal sum is roughly the
+    // real total inflated at the midpoint of the contribution window.
+    // The growth figure is shown in retirement-date nominal dollars.
+    const midYears = years / 2;
+    displayMonthly = toNominal(monthly, midYears, state.inflation);
+    displayContrib = toNominal(totalContrib, midYears, state.inflation);
+    displayGrowth  = toNominal(growth, years, state.inflation);
+  }
+
+  return { years, target, monthly, totalContrib, growth,
+           displayMonthly, displayContrib, displayGrowth };
+}
+
+// ── Input wiring ────────────────────────────────────────────────────────
+
+function bindPair(sliderId, numId, key, scale = 1) {
+  const s = document.getElementById(sliderId);
+  const n = document.getElementById(numId);
+  const apply = (src, val) => {
+    if (src !== s) s.value = val;
+    if (src !== n) n.value = val;
+    const f = parseFloat(val);
+    if (!isNaN(f)) {
+      state[key] = f * scale;
+      recompute();
+    }
+  };
+  s.addEventListener('input', e => apply(s, e.target.value));
+  n.addEventListener('input', e => apply(n, e.target.value));
+}
+
+bindPair('income-slider',    'income-num',    'income');
+bindPair('ret-start-slider', 'ret-start-num', 'retStartAge');
+bindPair('plan-end-slider',  'plan-end-num',  'planEndAge');
+bindPair('savings-slider',   'savings-num',   'savings');
+bindPair('ret-acc-slider',   'ret-acc-num',   'rAccum',    0.01);
+bindPair('ret-ret-slider',   'ret-ret-num',   'rRet',      0.01);
+bindPair('inflation-slider', 'inflation-num', 'inflation', 0.01);
+
+const ageScrubber = document.getElementById('age-scrubber');
+ageScrubber.addEventListener('input', e => {
+  state.scrubAge = parseInt(e.target.value, 10);
+  document.getElementById('age-display').textContent = state.scrubAge;
+  recompute();
+});
+
+document.getElementById('compare-a').addEventListener('input', e => {
+  const v = parseInt(e.target.value, 10);
+  if (!isNaN(v)) { state.cmpA = v; recompute(); }
+});
+document.getElementById('compare-b').addEventListener('input', e => {
+  const v = parseInt(e.target.value, 10);
+  if (!isNaN(v)) { state.cmpB = v; recompute(); }
+});
+
+document.getElementById('nominal-toggle').addEventListener('change', e => {
+  state.nominal = e.target.checked;
+  document.getElementById('inflation-row').classList.toggle('show', state.nominal);
+  recompute();
+});
+
+// ── Chart ───────────────────────────────────────────────────────────────
+
+const AGES = [];
+for (let a = 18; a <= 45; a++) AGES.push(a);
+
+// Plugin: a soft dashed vertical line at the currently-scrubbed age.
+const selectedAgePlugin = {
+  id: 'selectedAge',
+  afterDraw(chart) {
+    const idx = AGES.indexOf(state.scrubAge);
+    if (idx < 0) return;
+    const x = chart.scales.x.getPixelForValue(idx);
+    const { top, bottom } = chart.chartArea;
+    const c = chart.ctx;
+    c.save();
+    c.strokeStyle = '#c8c8c2';
+    c.lineWidth = 1;
+    c.setLineDash([4, 4]);
+    c.beginPath();
+    c.moveTo(x, top);
+    c.lineTo(x, bottom);
+    c.stroke();
+    c.restore();
+  }
+};
+
+const pointRadiusFn = ctx => ctx.dataIndex === AGES.indexOf(state.scrubAge) ? 5 : 0;
+
+const chart = new Chart(document.getElementById('main-chart').getContext('2d'), {
+  type: 'line',
+  plugins: [selectedAgePlugin],
+  data: {
+    labels: AGES,
+    datasets: [
+      {
+        label: 'Monthly contribution',
+        yAxisID: 'y',
+        data: [],
+        borderColor: '#0b6e6e',
+        backgroundColor: 'rgba(11,110,110,0.06)',
+        tension: 0.25,
+        borderWidth: 2,
+        pointRadius: pointRadiusFn,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#0b6e6e',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 1.5,
+      },
+      {
+        label: 'Lifetime out of pocket',
+        yAxisID: 'y1',
+        data: [],
+        borderColor: '#b85c2e',
+        backgroundColor: 'rgba(184,92,46,0.06)',
+        tension: 0.25,
+        borderWidth: 2,
+        borderDash: [6, 4],
+        pointRadius: pointRadiusFn,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#b85c2e',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 1.5,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          boxWidth: 14, boxHeight: 2, padding: 16,
+          font: { size: 12 },
+          color: '#555555',
+          usePointStyle: false,
+        }
+      },
+      tooltip: {
+        backgroundColor: '#ffffff',
+        titleColor: '#1a1a1a',
+        bodyColor: '#1a1a1a',
+        borderColor: '#e8e8e3',
+        borderWidth: 1,
+        padding: 12,
+        titleFont: { size: 13, weight: '600' },
+        bodyFont: { size: 13 },
+        boxPadding: 4,
+        callbacks: {
+          title: items => 'Start at age ' + items[0].label,
+          label: ctx => ' ' + ctx.dataset.label + ': ' + fmtMoney(ctx.parsed.y),
+        }
+      }
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'Starting age', color: '#8a8a87', font: { size: 12 } },
+        grid:  { color: '#f0f0eb' },
+        ticks: { color: '#8a8a87', font: { size: 12 } },
+        border: { color: '#e8e8e3' },
+      },
+      y: {
+        position: 'left',
+        title: { display: true, text: 'Monthly contribution', color: '#0b6e6e', font: { size: 12 } },
+        ticks: {
+          color: '#555555', font: { size: 12 },
+          callback: v => '$' + Math.round(v).toLocaleString('en-US'),
+        },
+        grid: { color: '#f0f0eb' },
+        beginAtZero: true,
+        border: { color: '#e8e8e3' },
+      },
+      y1: {
+        position: 'right',
+        title: { display: true, text: 'Lifetime out of pocket', color: '#b85c2e', font: { size: 12 } },
+        ticks: {
+          color: '#555555', font: { size: 12 },
+          callback: v => v >= 1000000
+            ? '$' + (v / 1000000).toFixed(1) + 'M'
+            : '$' + Math.round(v / 1000) + 'k',
+        },
+        grid: { display: false },
+        beginAtZero: true,
+        border: { color: '#e8e8e3' },
+      },
+    },
+  },
+});
+
+// ── Recompute / render ──────────────────────────────────────────────────
+
+function recompute() {
+  // Build chart series across ages 18..45
+  const monthlySeries  = AGES.map(a => priceAtAge(a).displayMonthly);
+  const lifetimeSeries = AGES.map(a => priceAtAge(a).displayContrib);
+  chart.data.datasets[0].data = monthlySeries;
+  chart.data.datasets[1].data = lifetimeSeries;
+  chart.update('none');
+
+  // Price tag
+  const sel = priceAtAge(state.scrubAge);
+  document.getElementById('monthly-headline').textContent = fmtMoney(sel.displayMonthly);
+  document.getElementById('total-oop').textContent       = fmtMoney(sel.displayContrib);
+  document.getElementById('total-growth').textContent    = fmtMoney(Math.max(0, sel.displayGrowth ?? 0));
+
+  // Comparison
+  const pa = priceAtAge(state.cmpA);
+  const pb = priceAtAge(state.cmpB);
+  document.getElementById('compare-a-month').textContent = fmtMoney(pa.displayMonthly);
+  document.getElementById('compare-a-total').textContent = fmtMoney(pa.displayContrib);
+  document.getElementById('compare-b-month').textContent = fmtMoney(pb.displayMonthly);
+  document.getElementById('compare-b-total').textContent = fmtMoney(pb.displayContrib);
+
+  const yearGap = Math.abs(state.cmpB - state.cmpA);
+  const later   = state.cmpB > state.cmpA ? state.cmpB : state.cmpA;
+  const earlier = state.cmpB > state.cmpA ? state.cmpA : state.cmpB;
+  const costGap = (pa.displayContrib != null && pb.displayContrib != null)
+    ? Math.abs(pb.displayContrib - pa.displayContrib)
+    : null;
+
+  document.getElementById('compare-takeaway').innerHTML = yearGap === 0
+    ? `Pick two different ages to see the gap.`
+    : `Starting at <strong>${later}</strong> instead of <strong>${earlier}</strong> costs you an extra <strong>${fmtMoney(costGap)}</strong> out of pocket over your career — for the same retirement.`;
+}
+
+recompute();
+</script>
+</body>
+</html>
