@@ -86,7 +86,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 28px;
-    margin-bottom: 8px;
+    margin-bottom: 30px;
   }
   @media (max-width: 540px) {
     .pt-fields { grid-template-columns: 1fr; gap: 22px; }
@@ -192,6 +192,7 @@
     letter-spacing: -0.005em;
     line-height: 1.4;
     color: var(--text);
+    margin-bottom: 28px;
   }
   .headline .income-display {
     font-weight: 500;
@@ -313,13 +314,14 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Totals */
+  /* Totals + proportional bar */
   .substats {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr 1fr;
     gap: 24px;
+    margin-bottom: 14px;
   }
-  @media (max-width: 640px) { .substats { grid-template-columns: 1fr; gap: 14px; } }
+  @media (max-width: 540px) { .substats { grid-template-columns: 1fr; gap: 14px; } }
   .stat .lbl {
     font-size: 11px;
     color: var(--text-faint);
@@ -327,13 +329,44 @@
     letter-spacing: 0.08em;
     margin-bottom: 6px;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
+  .stat .lbl .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .stat.you   .lbl .swatch { background: var(--accent); }
+  .stat.grow  .lbl .swatch { background: rgba(11, 110, 110, 0.32); }
   .stat .val {
     font-size: 22px;
-    font-weight: 500;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--text);
   }
+  .stat .pct {
+    font-size: 12px;
+    color: var(--text-faint);
+    font-weight: 500;
+    margin-top: 3px;
+    font-variant-numeric: tabular-nums;
+  }
+  .ratio-bar {
+    display: flex;
+    height: 10px;
+    border-radius: 100px;
+    overflow: hidden;
+    background: var(--border-soft);
+  }
+  .ratio-seg {
+    height: 100%;
+    transition: width 0.3s ease;
+  }
+  .ratio-seg.seg-you  { background: var(--accent); }
+  .ratio-seg.seg-grow { background: rgba(11, 110, 110, 0.32); }
 
   /* ── Advanced details ───────────────────────────────────────────── */
   .advanced {
@@ -736,29 +769,27 @@
         </div>
       </div>
 
-      <div class="pt-divider"></div>
-
       <div class="headline">
         For a <span class="income-display" id="income-display">$200,000</span>/year retirement, you'll need to contribute
         <span class="big" id="monthly-headline">$0</span>
         every month from now until retirement.
       </div>
 
-      <div class="pt-divider"></div>
-
       <div class="substats">
-        <div class="stat">
-          <div class="lbl">Total out of pocket</div>
+        <div class="stat you">
+          <div class="lbl"><span class="swatch"></span>Total out of pocket</div>
           <div class="val" id="total-oop">$0</div>
+          <div class="pct" id="oop-pct">—</div>
         </div>
-        <div class="stat">
-          <div class="lbl">Compounding does the rest</div>
+        <div class="stat grow">
+          <div class="lbl"><span class="swatch"></span>Compounding does the rest</div>
           <div class="val" id="total-growth">$0</div>
+          <div class="pct" id="grow-pct">—</div>
         </div>
-        <div class="stat">
-          <div class="lbl">Drawn from fund each year</div>
-          <div class="val" id="annual-draw">$0</div>
-        </div>
+      </div>
+      <div class="ratio-bar" aria-hidden="true">
+        <div class="ratio-seg seg-you"  id="seg-you"  style="width: 50%"></div>
+        <div class="ratio-seg seg-grow" id="seg-grow" style="width: 50%"></div>
       </div>
 
       <div class="pt-divider"></div>
@@ -1334,9 +1365,18 @@ function recompute() {
   document.getElementById('monthly-headline').textContent = fmtMoney(sel.displayMonthly);
   document.getElementById('total-oop').textContent       = fmtMoney(sel.displayContrib);
   document.getElementById('total-growth').textContent    = fmtMoney(Math.max(0, sel.displayGrowth ?? 0));
-  document.getElementById('annual-draw').textContent     = fmtMoney(
-    state.nominal ? toNominal(state.income, state.retStartAge - state.scrubAge, state.inflation) : state.income
-  );
+
+  // Proportional bar: out-of-pocket vs compounding, sized to their share
+  // of the total nest egg the user is actually building.
+  const oop   = Math.max(0, sel.displayContrib ?? 0);
+  const grown = Math.max(0, sel.displayGrowth  ?? 0);
+  const denom = oop + grown;
+  const oopPctNum = denom > 0 ? (oop  / denom) * 100 : 50;
+  const growPctNum = denom > 0 ? 100 - oopPctNum : 50;
+  document.getElementById('seg-you').style.width  = oopPctNum.toFixed(1) + '%';
+  document.getElementById('seg-grow').style.width = growPctNum.toFixed(1) + '%';
+  document.getElementById('oop-pct').textContent  = denom > 0 ? `${oopPctNum.toFixed(0)}% of the nest egg` : '';
+  document.getElementById('grow-pct').textContent = denom > 0 ? `${growPctNum.toFixed(0)}% of the nest egg` : '';
 
   // Wait card. Rounded values keep the displayed math internally consistent.
   const baseM   = sel.displayMonthly  == null ? null : Math.round(sel.displayMonthly);
