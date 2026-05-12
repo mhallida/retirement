@@ -461,6 +461,98 @@
   .inflation-row { display: none; }
   .inflation-row.show { display: block; }
 
+  /* Withdrawal-strategy picker */
+  .strategy-section {
+    padding: 22px 24px 24px;
+    border-top: 1px solid var(--border-soft);
+  }
+  .strategy-section h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    color: var(--text);
+  }
+  .strategy-section .strategy-lede {
+    font-size: 12.5px;
+    color: var(--text-faint);
+    margin: 0 0 14px;
+    line-height: 1.5;
+  }
+  .strategy-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .strategy-option {
+    position: relative;
+    display: block;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    background: var(--panel);
+  }
+  .strategy-option:hover { border-color: var(--accent); }
+  .strategy-option.selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .strategy-option input[type=radio] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .strategy-option .strategy-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .strategy-option .strategy-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border);
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.12s ease;
+  }
+  .strategy-option.selected .strategy-check {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .strategy-option.selected .strategy-check::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 5px;
+    width: 5px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .strategy-option .strategy-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+  }
+  .strategy-option .strategy-target {
+    font-size: 13px;
+    color: var(--text-soft);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  .strategy-option.selected .strategy-target { color: var(--accent); }
+  .strategy-option .strategy-desc {
+    font-size: 12.5px;
+    color: var(--text-soft);
+    line-height: 1.5;
+    margin-top: 6px;
+    margin-left: 30px;
+  }
+
   /* ── Comparison tabs ──────────────────────────────────────────── */
   .cmp-tabs {
     display: flex;
@@ -889,6 +981,49 @@
           <input type="checkbox" id="nominal-toggle"> Show numbers in future (nominal) dollars
         </label>
       </div>
+
+      <div class="strategy-section">
+        <h3>Withdrawal strategy</h3>
+        <p class="strategy-lede">How the nest egg pays out determines how big it needs to be. Pick a rule and the rest of the page updates.</p>
+        <div class="strategy-list" id="strategy-list">
+          <label class="strategy-option" data-strategy="bengen">
+            <input type="radio" name="strategy" value="bengen">
+            <div class="strategy-row">
+              <div class="strategy-check"></div>
+              <div class="strategy-title">4% rule (Bengen / Trinity Study)</div>
+              <div class="strategy-target" data-target-for="bengen">—</div>
+            </div>
+            <div class="strategy-desc">Withdraw 4% of the starting balance each year, adjusted for inflation. The classic safe-withdrawal rule. Historically the money lasts 30+ years and often outlives the retiree.</div>
+          </label>
+          <label class="strategy-option" data-strategy="conservative">
+            <input type="radio" name="strategy" value="conservative">
+            <div class="strategy-row">
+              <div class="strategy-check"></div>
+              <div class="strategy-title">3.3% rule (more conservative)</div>
+              <div class="strategy-target" data-target-for="conservative">—</div>
+            </div>
+            <div class="strategy-desc">Morningstar's updated guidance for longer retirements or lower expected returns. More cushion at the cost of a bigger required nest egg.</div>
+          </label>
+          <label class="strategy-option" data-strategy="aggressive">
+            <input type="radio" name="strategy" value="aggressive">
+            <div class="strategy-row">
+              <div class="strategy-check"></div>
+              <div class="strategy-title">5% rule (more aggressive)</div>
+              <div class="strategy-target" data-target-for="aggressive">—</div>
+            </div>
+            <div class="strategy-desc">Smaller required nest egg, higher fail risk in bad-market sequences. Better for flexible spenders or those expecting part-time income in retirement.</div>
+          </label>
+          <label class="strategy-option" data-strategy="depletion">
+            <input type="radio" name="strategy" value="depletion">
+            <div class="strategy-row">
+              <div class="strategy-check"></div>
+              <div class="strategy-title">Spend it all by your plan-through age</div>
+              <div class="strategy-target" data-target-for="depletion">—</div>
+            </div>
+            <div class="strategy-desc">Drain the account to zero by the "plan through age" above. Maximum income for a known horizon, but you'll run out if you live longer than planned.</div>
+          </label>
+        </div>
+      </div>
     </details>
   </section>
 
@@ -1098,7 +1233,39 @@ const state = {
   scrubMax: 70,
   waitYears: 5,
   nominal: false,
+  strategy: 'depletion', // bengen | conservative | aggressive | depletion
 };
+
+// Map of withdrawal-rate rules to their annual withdrawal rate. `depletion`
+// is handled separately via the PV-of-annuity formula below.
+const STRATEGY_RATES = { bengen: 0.04, conservative: 0.033, aggressive: 0.05 };
+
+function strategyRate() {
+  return STRATEGY_RATES[state.strategy] ?? null;
+}
+
+// Required nest egg to fund the user's annual income under the active
+// withdrawal strategy. For rule-based strategies it's just income/rate;
+// for depletion we use PV of annuity over the plan horizon.
+function targetFromIncome(income) {
+  const rate = strategyRate();
+  if (rate != null) return income / rate;
+  return pvAnnuity(income, state.rRet, state.planEndAge - state.retStartAge);
+}
+
+// Inverse: given a nest egg, what annual retirement income does it fund
+// under the active strategy?
+function incomeFromTarget(nestEgg) {
+  if (nestEgg == null || !isFinite(nestEgg)) return null;
+  const rate = strategyRate();
+  if (rate != null) return nestEgg * rate;
+  const drawdown = state.planEndAge - state.retStartAge;
+  if (drawdown <= 0) return null;
+  const r = state.rRet;
+  return (r === 0)
+    ? nestEgg / drawdown
+    : nestEgg * r / (1 - Math.pow(1 + r, -drawdown));
+}
 
 // ── Math ────────────────────────────────────────────────────────────────
 
@@ -1153,18 +1320,12 @@ function altIncomeBumped(monthlyEarly, monthlyLate, bumpYears) {
   const nestEgg = balanceAtBump * Math.pow(1 + state.rAccum, phase2Years)
                 + monthlyLate * fvFactor(m2);
 
-  const drawdown = state.planEndAge - state.retStartAge;
-  if (drawdown <= 0) return null;
-  const r = state.rRet;
-  return (r === 0)
-    ? nestEgg / drawdown
-    : nestEgg * r / (1 - Math.pow(1 + r, -drawdown));
+  return incomeFromTarget(nestEgg);
 }
 
 function priceAtAge(startAge) {
   const years = state.retStartAge - startAge;
-  const drawdownYears = state.planEndAge - state.retStartAge;
-  const target = pvAnnuity(state.income, state.rRet, drawdownYears);
+  const target = targetFromIncome(state.income);
   const monthly = requiredMonthly(target, years, state.savings, state.rAccum);
 
   if (monthly === null) {
@@ -1317,6 +1478,25 @@ document.querySelectorAll('.cmp-tab').forEach(btn => {
   });
 });
 
+// Withdrawal-strategy picker (radio-style; only one active at a time)
+function refreshStrategyUI() {
+  document.querySelectorAll('.strategy-option').forEach(el => {
+    const isSelected = el.dataset.strategy === state.strategy;
+    el.classList.toggle('selected', isSelected);
+    const input = el.querySelector('input[type=radio]');
+    if (input) input.checked = isSelected;
+  });
+}
+document.querySelectorAll('.strategy-option').forEach(el => {
+  el.addEventListener('click', e => {
+    e.preventDefault();
+    state.strategy = el.dataset.strategy;
+    refreshStrategyUI();
+    recompute();
+  });
+});
+refreshStrategyUI();
+
 document.getElementById('nominal-toggle').addEventListener('change', e => {
   state.nominal = e.target.checked;
   document.getElementById('inflation-row').classList.toggle('show', state.nominal);
@@ -1344,17 +1524,23 @@ function incomeFromMonthlyAt(startAge, monthly) {
     : monthly * (Math.pow(1 + i, months) - 1) / i;
   const nestEgg = fvStart + fvContrib;
 
-  const drawdown = state.planEndAge - state.retStartAge;
-  if (drawdown <= 0) return null;
-  const r = state.rRet;
-  return (r === 0)
-    ? nestEgg / drawdown
-    : nestEgg * r / (1 - Math.pow(1 + r, -drawdown));
+  return incomeFromTarget(nestEgg);
 }
 
 // ── Recompute / render ──────────────────────────────────────────────────
 
 function recompute() {
+  // Update the target shown on each strategy option so users can see
+  // exactly what each rule implies for their income target.
+  const savedStrategy = state.strategy;
+  ['bengen', 'conservative', 'aggressive', 'depletion'].forEach(s => {
+    state.strategy = s;
+    const t = targetFromIncome(state.income);
+    const tgtEl = document.querySelector(`[data-target-for="${s}"]`);
+    if (tgtEl) tgtEl.textContent = '≈ ' + fmtMoney(t);
+  });
+  state.strategy = savedStrategy;
+
   // Headline
   const sel     = priceAtAge(state.scrubAge);
   const selWait = priceAtAge(state.scrubAge + state.waitYears);
