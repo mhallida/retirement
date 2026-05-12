@@ -213,6 +213,24 @@
   }
   .delay-card.warn5 .delay-extra { color: var(--warm); }
   .delay-card.warn10 .delay-extra { color: var(--warm-deep); }
+  .delay-card .delay-total {
+    font-size: 17px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    line-height: 1.2;
+  }
+  .delay-card .delay-total-extra {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    margin-top: 3px;
+  }
+  .delay-card.warn5 .delay-total-extra { color: var(--warm); }
+  .delay-card.warn10 .delay-total-extra { color: var(--warm-deep); }
 
   /* Totals */
   .substats {
@@ -514,12 +532,16 @@
           <div class="delay-sub" id="delay5-sub">Start at 25 instead</div>
           <div class="delay-value" id="delay5-value">$0/mo</div>
           <div class="delay-extra" id="delay5-extra">+$0 more every month</div>
+          <div class="delay-total" id="delay5-total">$0 total</div>
+          <div class="delay-total-extra" id="delay5-total-extra">+$0 out of pocket</div>
         </div>
         <div class="delay-card warn10">
           <div class="delay-lbl">Wait 10 years</div>
           <div class="delay-sub" id="delay10-sub">Start at 30 instead</div>
           <div class="delay-value" id="delay10-value">$0/mo</div>
           <div class="delay-extra" id="delay10-extra">+$0 more every month</div>
+          <div class="delay-total" id="delay10-total">$0 total</div>
+          <div class="delay-total-extra" id="delay10-total-extra">+$0 out of pocket</div>
         </div>
       </div>
 
@@ -1136,6 +1158,18 @@ function recompute() {
   const extra10 = (m10 == null || baseMonthly == null) ? null : m10 - baseMonthly;
   document.getElementById('delay5-extra').textContent  = (extra5  == null) ? '' : `+$${extra5.toLocaleString('en-US')} more every month`;
   document.getElementById('delay10-extra').textContent = (extra10 == null) ? '' : `+$${extra10.toLocaleString('en-US')} more every month`;
+
+  // Total contributed (lifetime out of pocket) per scenario, plus the gap
+  // versus starting now.
+  const baseTotal = sel.displayContrib  == null ? null : Math.round(sel.displayContrib);
+  const tot5      = sel5.displayContrib  == null ? null : Math.round(sel5.displayContrib);
+  const tot10     = sel10.displayContrib == null ? null : Math.round(sel10.displayContrib);
+  const totExtra5  = (tot5  == null || baseTotal == null) ? null : tot5  - baseTotal;
+  const totExtra10 = (tot10 == null || baseTotal == null) ? null : tot10 - baseTotal;
+  document.getElementById('delay5-total').textContent  = (tot5  == null) ? '—' : `$${tot5.toLocaleString('en-US')} total`;
+  document.getElementById('delay10-total').textContent = (tot10 == null) ? '—' : `$${tot10.toLocaleString('en-US')} total`;
+  document.getElementById('delay5-total-extra').textContent  = (totExtra5  == null) ? '' : `+$${totExtra5.toLocaleString('en-US')} out of pocket`;
+  document.getElementById('delay10-total-extra').textContent = (totExtra10 == null) ? '' : `+$${totExtra10.toLocaleString('en-US')} out of pocket`;
 
   // Comparison
   const pa = priceAtAge(state.cmpA);
