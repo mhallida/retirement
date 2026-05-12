@@ -610,12 +610,12 @@
 
   <!-- ── Chart ────────────────────────────────────────────────────────── -->
   <section class="section">
-    <h2>The whole curve</h2>
+    <h2>Same target, three paths</h2>
     <div class="chart-wrap">
       <div class="chart-canvas-wrap">
         <canvas id="main-chart"></canvas>
       </div>
-      <p class="chart-caption">Each point is what it would cost you, starting at that age, to fund the same retirement. The three vertical markers track your selected starting age, that age plus 5 years, and that age plus 10 years.</p>
+      <p class="chart-caption">All three portfolios end up at the same retirement target. The dashed early portion of the wait-5 and wait-10 paths is just the starting balance compounding on its own before any contributions begin. The number on the right of each line is the required monthly contribution.</p>
     </div>
   </section>
 
@@ -868,105 +868,174 @@ document.getElementById('nominal-toggle').addEventListener('change', e => {
   recompute();
 });
 
-// ── Chart ───────────────────────────────────────────────────────────────
+// ── Chart: portfolio growth over time ───────────────────────────────────
+//
+// Three trajectories, all starting at the user's current age (scrubAge)
+// with the same current savings. Each scenario differs in WHEN contributions
+// begin: now, in 5 years, in 10 years. The required monthly contribution
+// for each scenario is sized so the portfolio still hits the same target
+// nest egg at retirement. Lines that begin contributing later need a
+// steeper monthly to catch up.
 
-const AGES = [];
-for (let a = 18; a <= 50; a++) AGES.push(a);
+const FUND_COLORS = [
+  { main: '#0b6e6e', fill: 'rgba(11,110,110,0.10)' }, // start now (teal)
+  { main: '#cb7e2e', fill: 'rgba(203,126,46,0.10)' }, // wait 5  (amber)
+  { main: '#8b3a1b', fill: 'rgba(139,58,27,0.10)' },  // wait 10 (rust)
+];
 
-const MARKER_COLORS = {
-  now:    { line: 'rgba(11,110,110,0.85)',  fill: '#0b6e6e', label: 'Now' },
-  five:   { line: 'rgba(184,92,46,0.85)',   fill: '#b85c2e', label: '+5y' },
-  ten:    { line: 'rgba(139,58,27,0.9)',    fill: '#8b3a1b', label: '+10y' },
-};
+// Build the {x: age, y: balance} time series for a single scenario.
+function trajectory(startAge) {
+  const currentAge = state.scrubAge;
+  const yearsToRet = state.retStartAge - currentAge;
+  const delay = startAge - currentAge;          // years before contributions begin
+  const yearsContrib = state.retStartAge - startAge;
 
-// Draws dashed vertical guides (with a small label) at scrubAge, +5, +10.
-const markerPlugin = {
-  id: 'ageMarkers',
-  afterDraw(chart) {
-    const c = chart.ctx;
-    const { top, bottom } = chart.chartArea;
-    const items = [
-      { age: state.scrubAge,      ...MARKER_COLORS.now },
-      { age: state.scrubAge + 5,  ...MARKER_COLORS.five },
-      { age: state.scrubAge + 10, ...MARKER_COLORS.ten },
-    ];
-    for (const it of items) {
-      const idx = AGES.indexOf(it.age);
-      if (idx < 0) continue;
-      const x = chart.scales.x.getPixelForValue(idx);
-      c.save();
-      c.strokeStyle = it.line;
-      c.lineWidth = 1.2;
-      c.setLineDash([4, 4]);
-      c.beginPath();
-      c.moveTo(x, top);
-      c.lineTo(x, bottom);
-      c.stroke();
-      c.setLineDash([]);
-      c.fillStyle = it.fill;
-      c.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-      c.textAlign = 'center';
-      c.fillText(it.label, x, top - 4);
-      c.restore();
+  const drawdownYears = state.planEndAge - state.retStartAge;
+  const target = pvAnnuity(state.income, state.rRet, drawdownYears);
+
+  // What monthly contribution does this scenario need? The starting balance
+  // gets to grow on its own through `delay` before contributions start.
+  let monthly = null;
+  if (yearsContrib > 0) {
+    const balAtContribStart = state.savings * Math.pow(1 + state.rAccum, delay);
+    monthly = requiredMonthly(target, yearsContrib, balAtContribStart, state.rAccum);
+  }
+
+  // Walk the timeline. Quarter-year steps keep the line smooth without
+  // overwhelming Chart.js.
+  const points = [];
+  const i = Math.pow(1 + state.rAccum, 1 / 12) - 1; // monthly real rate
+  const step = 0.25;
+
+  for (let t = 0; t <= yearsToRet + 1e-9; t += step) {
+    let bal;
+    if (t <= delay) {
+      bal = state.savings * Math.pow(1 + state.rAccum, t);
+    } else {
+      const elapsed = t - delay;
+      const balAtContribStart = state.savings * Math.pow(1 + state.rAccum, delay);
+      const fvStart = balAtContribStart * Math.pow(1 + state.rAccum, elapsed);
+      const months  = elapsed * 12;
+      const fvContrib = monthly == null ? 0
+        : (i === 0 ? monthly * months
+                   : monthly * (Math.pow(1 + i, months) - 1) / i);
+      bal = fvStart + fvContrib;
     }
+    if (state.nominal) bal = toNominal(bal, t, state.inflation);
+    points.push({ x: currentAge + t, y: bal });
+  }
+
+  // Display version of the monthly (approximate nominal at midpoint of
+  // contribution window).
+  let displayMonthly = monthly;
+  if (state.nominal && monthly != null) {
+    const midFromNow = delay + yearsContrib / 2;
+    displayMonthly = toNominal(monthly, midFromNow, state.inflation);
+  }
+
+  const displayTarget = state.nominal
+    ? toNominal(target, yearsToRet, state.inflation)
+    : target;
+
+  return { points, monthly: displayMonthly, target: displayTarget,
+           startAge, contributesFrom: startAge };
+}
+
+// Plugin: faint horizontal line at the target nest egg + label.
+const targetLinePlugin = {
+  id: 'targetLine',
+  afterDraw(chart) {
+    const t = chart.$target;
+    if (t == null || !isFinite(t)) return;
+    const yScale = chart.scales.y;
+    if (t > yScale.max || t < yScale.min) return;
+    const c = chart.ctx;
+    const y = yScale.getPixelForValue(t);
+    const { left, right } = chart.chartArea;
+    c.save();
+    c.strokeStyle = 'rgba(120,120,120,0.45)';
+    c.lineWidth = 1;
+    c.setLineDash([3, 4]);
+    c.beginPath();
+    c.moveTo(left, y);
+    c.lineTo(right, y);
+    c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = '#777';
+    c.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    c.textAlign = 'left';
+    c.textBaseline = 'bottom';
+    c.fillText('Target nest egg · ' + fmtMoney(t), left + 6, y - 3);
+    c.restore();
   }
 };
 
-const markerIndices = () => new Set([
-  AGES.indexOf(state.scrubAge),
-  AGES.indexOf(state.scrubAge + 5),
-  AGES.indexOf(state.scrubAge + 10),
-]);
+// Plugin: at the right edge of each line, label the required monthly contribution.
+const monthlyLabelPlugin = {
+  id: 'monthlyLabels',
+  afterDatasetsDraw(chart) {
+    const c = chart.ctx;
+    chart.data.datasets.forEach((ds, i) => {
+      const meta = chart.getDatasetMeta(i);
+      if (!meta.data || meta.data.length === 0) return;
+      const last = meta.data[meta.data.length - 1];
+      const monthly = ds._monthly;
+      if (monthly == null || !isFinite(monthly)) return;
+      c.save();
+      c.fillStyle = ds.borderColor;
+      c.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      c.textAlign = 'left';
+      c.textBaseline = 'middle';
+      c.fillText('$' + Math.round(monthly).toLocaleString('en-US') + '/mo',
+                 last.x + 8, last.y);
+      c.restore();
+    });
+  }
+};
 
-const pointRadiusFn = ctx => markerIndices().has(ctx.dataIndex) ? 5 : 0;
+// Segment styling: dashed and thinner during the pre-contribution phase.
+function segmentStyle(idx) {
+  return {
+    borderDash: ctx => {
+      const startAge = state.scrubAge + idx * 5;
+      return ctx.p0.parsed.x < startAge - 1e-9 ? [4, 4] : undefined;
+    },
+    borderWidth: ctx => {
+      const startAge = state.scrubAge + idx * 5;
+      return ctx.p0.parsed.x < startAge - 1e-9 ? 1.4 : 2.2;
+    },
+  };
+}
 
 const chart = new Chart(document.getElementById('main-chart').getContext('2d'), {
   type: 'line',
-  plugins: [markerPlugin],
+  plugins: [targetLinePlugin, monthlyLabelPlugin],
   data: {
-    labels: AGES,
-    datasets: [
-      {
-        label: 'Monthly contribution',
-        yAxisID: 'y',
-        data: [],
-        borderColor: '#0b6e6e',
-        backgroundColor: 'rgba(11,110,110,0.06)',
-        tension: 0.25,
-        borderWidth: 2,
-        pointRadius: pointRadiusFn,
-        pointHoverRadius: 5,
-        pointBackgroundColor: '#0b6e6e',
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 1.5,
-      },
-      {
-        label: 'Lifetime out of pocket',
-        yAxisID: 'y1',
-        data: [],
-        borderColor: '#b85c2e',
-        backgroundColor: 'rgba(184,92,46,0.06)',
-        tension: 0.25,
-        borderWidth: 2,
-        borderDash: [6, 4],
-        pointRadius: pointRadiusFn,
-        pointHoverRadius: 5,
-        pointBackgroundColor: '#b85c2e',
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 1.5,
-      },
-    ],
+    datasets: [0, 1, 2].map(i => ({
+      label: '',
+      data: [],
+      borderColor: FUND_COLORS[i].main,
+      backgroundColor: FUND_COLORS[i].fill,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      borderWidth: 2.2,
+      tension: 0.15,
+      fill: false,
+      segment: segmentStyle(i),
+      _monthly: null,
+    })),
   },
   options: {
     responsive: true,
     maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
-    layout: { padding: { top: 18 } },
+    parsing: false,
+    interaction: { mode: 'nearest', axis: 'x', intersect: false },
+    layout: { padding: { top: 14, right: 110 } },
     plugins: {
       legend: {
         position: 'bottom',
         labels: {
-          boxWidth: 14, boxHeight: 2, padding: 16,
+          boxWidth: 14, boxHeight: 2, padding: 18,
           font: { size: 12 },
           color: '#555555',
           usePointStyle: false,
@@ -983,39 +1052,32 @@ const chart = new Chart(document.getElementById('main-chart').getContext('2d'), 
         bodyFont: { size: 13 },
         boxPadding: 4,
         callbacks: {
-          title: items => 'Start at age ' + items[0].label,
+          title: items => 'Age ' + Number(items[0].parsed.x).toFixed(1),
           label: ctx => ' ' + ctx.dataset.label + ': ' + fmtMoney(ctx.parsed.y),
         }
       }
     },
     scales: {
       x: {
-        title: { display: true, text: 'Starting age', color: '#8a8a87', font: { size: 12 } },
+        type: 'linear',
+        title: { display: true, text: 'Age', color: '#8a8a87', font: { size: 12 } },
         grid:  { color: '#f0f0eb' },
-        ticks: { color: '#8a8a87', font: { size: 12 } },
+        ticks: {
+          color: '#8a8a87', font: { size: 12 },
+          stepSize: 5,
+          callback: v => Math.round(v),
+        },
         border: { color: '#e8e8e3' },
       },
       y: {
-        position: 'left',
-        title: { display: true, text: 'Monthly contribution', color: '#0b6e6e', font: { size: 12 } },
-        ticks: {
-          color: '#555555', font: { size: 12 },
-          callback: v => '$' + Math.round(v).toLocaleString('en-US'),
-        },
+        title: { display: true, text: 'Portfolio balance', color: '#555', font: { size: 12 } },
         grid: { color: '#f0f0eb' },
-        beginAtZero: true,
-        border: { color: '#e8e8e3' },
-      },
-      y1: {
-        position: 'right',
-        title: { display: true, text: 'Lifetime out of pocket', color: '#b85c2e', font: { size: 12 } },
         ticks: {
           color: '#555555', font: { size: 12 },
           callback: v => v >= 1000000
             ? '$' + (v / 1000000).toFixed(1) + 'M'
             : '$' + Math.round(v / 1000).toLocaleString('en-US') + 'k',
         },
-        grid: { display: false },
         beginAtZero: true,
         border: { color: '#e8e8e3' },
       },
@@ -1026,9 +1088,24 @@ const chart = new Chart(document.getElementById('main-chart').getContext('2d'), 
 // ── Recompute / render ──────────────────────────────────────────────────
 
 function recompute() {
-  // Chart data
-  chart.data.datasets[0].data = AGES.map(a => priceAtAge(a).displayMonthly);
-  chart.data.datasets[1].data = AGES.map(a => priceAtAge(a).displayContrib);
+  // Chart: three portfolio-growth trajectories.
+  const t0 = trajectory(state.scrubAge);
+  const t5 = trajectory(state.scrubAge + 5);
+  const t10 = trajectory(state.scrubAge + 10);
+
+  chart.data.datasets[0].label = `Start at ${state.scrubAge}`;
+  chart.data.datasets[0].data = t0.points;
+  chart.data.datasets[0]._monthly = t0.monthly;
+
+  chart.data.datasets[1].label = `Start at ${state.scrubAge + 5}`;
+  chart.data.datasets[1].data = t5.points;
+  chart.data.datasets[1]._monthly = t5.monthly;
+
+  chart.data.datasets[2].label = `Start at ${state.scrubAge + 10}`;
+  chart.data.datasets[2].data = t10.points;
+  chart.data.datasets[2]._monthly = t10.monthly;
+
+  chart.$target = t0.target;
   chart.update('none');
 
   // Headline numbers
