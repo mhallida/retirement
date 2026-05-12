@@ -232,11 +232,10 @@
   .delay-card.warn5 .delay-total-extra { color: var(--warm); }
   .delay-card.warn10 .delay-total-extra { color: var(--warm-deep); }
   .delay-card .delay-alt-title {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 600;
-    color: var(--accent);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-soft);
+    line-height: 1.4;
     margin-top: 14px;
     padding-top: 12px;
     border-top: 1px solid rgba(0, 0, 0, 0.06);
@@ -811,20 +810,31 @@ function toNominal(realDollars, years, infl) {
   return realDollars * Math.pow(1 + infl, years);
 }
 
-// "What if I just paid the bigger monthly amount starting now?" — given
-// some hypothetical monthlyContrib, compute the annual retirement income
-// it would fund if paid from scrubAge through retirement.
-function altIncomeFromMonthly(monthlyContrib) {
-  if (monthlyContrib == null || !isFinite(monthlyContrib)) return null;
-  const years = state.retStartAge - state.scrubAge;
-  if (years <= 0) return null;
-  const fvStart = state.savings * Math.pow(1 + state.rAccum, years);
+// "Start now at the baseline monthly, then bump up to the bigger monthly
+// after `bumpYears`." Returns the annual retirement income that nest egg
+// would fund. This captures the cost of not-starting-now: even small
+// early contributions compound for many extra years.
+function altIncomeBumped(monthlyEarly, monthlyLate, bumpYears) {
+  if (monthlyEarly == null || monthlyLate == null) return null;
+  if (!isFinite(monthlyEarly) || !isFinite(monthlyLate)) return null;
+  const totalYears = state.retStartAge - state.scrubAge;
+  if (totalYears <= bumpYears) return null;
+
   const i = Math.pow(1 + state.rAccum, 1 / 12) - 1;
-  const months = years * 12;
-  const fvContrib = (i === 0)
-    ? monthlyContrib * months
-    : monthlyContrib * (Math.pow(1 + i, months) - 1) / i;
-  const nestEgg = fvStart + fvContrib;
+  const fvFactor = months => (i === 0 ? months : (Math.pow(1 + i, months) - 1) / i);
+
+  // Phase 1: bumpYears of monthlyEarly, with current savings compounding alongside.
+  const m1 = bumpYears * 12;
+  const balanceAtBump = state.savings * Math.pow(1 + state.rAccum, bumpYears)
+                      + monthlyEarly * fvFactor(m1);
+
+  // Phase 2: (totalYears - bumpYears) of monthlyLate, balance from phase 1
+  // compounds forward.
+  const phase2Years = totalYears - bumpYears;
+  const m2 = phase2Years * 12;
+  const nestEgg = balanceAtBump * Math.pow(1 + state.rAccum, phase2Years)
+                + monthlyLate * fvFactor(m2);
+
   const drawdown = state.planEndAge - state.retStartAge;
   if (drawdown <= 0) return null;
   const r = state.rRet;
@@ -1224,26 +1234,32 @@ function recompute() {
   document.getElementById('delay5-total-extra').textContent  = (totExtra5  == null) ? '' : `+$${totExtra5.toLocaleString('en-US')} out of pocket`;
   document.getElementById('delay10-total-extra').textContent = (totExtra10 == null) ? '' : `+$${totExtra10.toLocaleString('en-US')} out of pocket`;
 
-  // The flip: if you paid the wait-scenario monthly STARTING NOW, what
-  // retirement income would that fund? Same monthly cost, but invested
-  // earlier — the gap is the cost of timing alone.
+  // The flip: instead of waiting, you start NOW at the baseline rate and
+  // bump up to the wait-scenario rate at age +5 (or +10). Those few years
+  // of "small" early contributions compound for decades, and the resulting
+  // retirement income is meaningfully higher — for life.
   const yearsToRet = state.retStartAge - state.scrubAge;
   const incomeDisp = state.nominal ? toNominal(state.income, yearsToRet, state.inflation) : state.income;
-  const altRaw5  = altIncomeFromMonthly(sel5.monthly);
-  const altRaw10 = altIncomeFromMonthly(sel10.monthly);
+  const altRaw5  = altIncomeBumped(sel.monthly, sel5.monthly,  5);
+  const altRaw10 = altIncomeBumped(sel.monthly, sel10.monthly, 10);
   const alt5  = (altRaw5  == null) ? null : (state.nominal ? toNominal(altRaw5,  yearsToRet, state.inflation) : altRaw5);
   const alt10 = (altRaw10 == null) ? null : (state.nominal ? toNominal(altRaw10, yearsToRet, state.inflation) : altRaw10);
   const altExtra5  = (alt5  == null) ? null : Math.round(alt5)  - Math.round(incomeDisp);
   const altExtra10 = (alt10 == null) ? null : Math.round(alt10) - Math.round(incomeDisp);
 
-  const hasAlt5  = m5  != null && m5  > 0;
-  const hasAlt10 = m10 != null && m10 > 0;
-  document.getElementById('delay5-alt-title').textContent  = hasAlt5  ? `If you paid $${m5.toLocaleString('en-US')}/mo starting now`   : '';
-  document.getElementById('delay10-alt-title').textContent = hasAlt10 ? `If you paid $${m10.toLocaleString('en-US')}/mo starting now` : '';
-  document.getElementById('delay5-alt-value').textContent  = (hasAlt5  && alt5  != null) ? `$${Math.round(alt5 ).toLocaleString('en-US')}/year retirement` : '';
-  document.getElementById('delay10-alt-value').textContent = (hasAlt10 && alt10 != null) ? `$${Math.round(alt10).toLocaleString('en-US')}/year retirement` : '';
-  document.getElementById('delay5-alt-extra').textContent  = (hasAlt5  && altExtra5  != null) ? `+$${altExtra5.toLocaleString('en-US')} more every year`  : '';
-  document.getElementById('delay10-alt-extra').textContent = (hasAlt10 && altExtra10 != null) ? `+$${altExtra10.toLocaleString('en-US')} more every year` : '';
+  const baseM = baseMonthly;
+  const hasAlt5  = m5  != null && m5  > 0 && baseM != null;
+  const hasAlt10 = m10 != null && m10 > 0 && baseM != null;
+  const bumpAge5  = state.scrubAge + 5;
+  const bumpAge10 = state.scrubAge + 10;
+  document.getElementById('delay5-alt-title').textContent  = hasAlt5
+    ? `If you start now at $${baseM.toLocaleString('en-US')}/mo and bump to $${m5.toLocaleString('en-US')}/mo at ${bumpAge5}`  : '';
+  document.getElementById('delay10-alt-title').textContent = hasAlt10
+    ? `If you start now at $${baseM.toLocaleString('en-US')}/mo and bump to $${m10.toLocaleString('en-US')}/mo at ${bumpAge10}` : '';
+  document.getElementById('delay5-alt-value').textContent  = (hasAlt5  && alt5  != null) ? `$${Math.round(alt5 ).toLocaleString('en-US')}/year in retirement` : '';
+  document.getElementById('delay10-alt-value').textContent = (hasAlt10 && alt10 != null) ? `$${Math.round(alt10).toLocaleString('en-US')}/year in retirement` : '';
+  document.getElementById('delay5-alt-extra').textContent  = (hasAlt5  && altExtra5  != null) ? `+$${altExtra5.toLocaleString('en-US')} every year for life`  : '';
+  document.getElementById('delay10-alt-extra').textContent = (hasAlt10 && altExtra10 != null) ? `+$${altExtra10.toLocaleString('en-US')} every year for life` : '';
 
   // Comparison
   const pa = priceAtAge(state.cmpA);
