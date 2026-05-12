@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Price of Waiting</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --bg: #fafaf7;
@@ -100,18 +99,21 @@
     font-weight: 600;
     color: var(--text-faint);
   }
-  .pt-field .input-line {
+  .pt-field .input-line,
+  .age-stepper {
     display: flex;
-    align-items: baseline;
-    gap: 4px;
+    align-items: center;
+    height: 46px;
+    padding: 0;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 4px;
   }
+  .pt-field .input-line { gap: 4px; }
   .pt-field .input-line:focus-within { border-bottom-color: var(--accent); }
   .pt-field .input-line .prefix {
     color: var(--text-faint);
-    font-size: 20px;
+    font-size: 24px;
     font-weight: 500;
+    line-height: 1;
   }
   .pt-field input[type=text] {
     flex: 1;
@@ -122,18 +124,13 @@
     font-variant-numeric: tabular-nums;
     border: none;
     background: transparent;
-    padding: 2px 0;
+    padding: 0;
     color: var(--text);
     width: 100%;
+    line-height: 1;
   }
   .pt-field input[type=text]:focus { outline: none; }
-  .age-stepper {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 2px 0 4px;
-    border-bottom: 1px solid var(--border);
-  }
+  .age-stepper { gap: 14px; }
   .age-stepper .age-num {
     flex: 1;
     text-align: center;
@@ -141,7 +138,7 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--text);
-    line-height: 1.1;
+    line-height: 1;
   }
   .age-stepper button {
     width: 32px;
@@ -417,85 +414,219 @@
   .inflation-row { display: none; }
   .inflation-row.show { display: block; }
 
-  /* ── Chart ──────────────────────────────────────────────────────── */
-  .chart-wrap {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 26px 24px 22px;
+  /* ── Comparison tabs ──────────────────────────────────────────── */
+  .cmp-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
   }
-  .chart-canvas-wrap {
-    position: relative;
-    height: 400px;
+  .cmp-tab {
+    padding: 10px 18px;
+    background: transparent;
+    border: none;
+    color: var(--text-faint);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.12s ease, border-color 0.12s ease;
   }
-  @media (max-width: 540px) { .chart-canvas-wrap { height: 340px; } }
-  .chart-caption {
+  .cmp-tab:hover { color: var(--text); }
+  .cmp-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .cmp-view { display: none; }
+  .cmp-view.active { display: block; }
+
+  .cmp-caption {
     font-size: 13px;
     color: var(--text-faint);
-    margin: 16px 4px 0;
+    margin: 18px 2px 0;
     line-height: 1.55;
   }
 
-  /* ── Comparison ─────────────────────────────────────────────────── */
-  .compare {
+  /* V1 — Stat cards */
+  .cmp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  @media (max-width: 720px) { .cmp-grid { grid-template-columns: 1fr; } }
+  .cmp-card {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 30px;
+    border-left: 3px solid;
+    border-radius: 6px;
+    padding: 20px 22px;
   }
-  @media (max-width: 540px) { .compare { padding: 22px; } }
-  .compare-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 28px;
-    margin-bottom: 24px;
+  .cmp-card.tone-now { border-left-color: var(--accent); }
+  .cmp-card.tone-5   { border-left-color: var(--warm); }
+  .cmp-card.tone-10  { border-left-color: var(--warm-deep); }
+  .cmp-card-tag {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
   }
-  @media (max-width: 580px) {
-    .compare-grid { grid-template-columns: 1fr; gap: 20px; }
+  .cmp-card.tone-now .cmp-card-tag { color: var(--accent); }
+  .cmp-card.tone-5   .cmp-card-tag { color: var(--warm); }
+  .cmp-card.tone-10  .cmp-card-tag { color: var(--warm-deep); }
+  .cmp-card-age {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 16px;
+    font-variant-numeric: tabular-nums;
   }
-  .compare-card .age-input {
+  .cmp-card-row {
     display: flex;
+    justify-content: space-between;
     align-items: baseline;
-    gap: 10px;
-    margin-bottom: 14px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border-soft);
+    font-size: 13px;
+    gap: 12px;
   }
-  .compare-card .age-input span {
+  .cmp-card-row:first-of-type { border-top: none; padding-top: 0; }
+  .cmp-card-row .cmp-card-key { color: var(--text-faint); }
+  .cmp-card-row .cmp-card-val {
+    color: var(--text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  /* V2 — Income gap bars */
+  .bars-intro {
     font-size: 14px;
     color: var(--text-soft);
-  }
-  .compare-card .age-input input {
-    width: 64px;
-    padding: 4px 6px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font: inherit;
-    font-size: 20px;
-    font-weight: 600;
-    text-align: center;
-    color: var(--text);
-  }
-  .compare-card .age-input input:focus { outline: none; border-color: var(--accent); }
-  .compare-card .lines {
-    font-size: 15px;
-    line-height: 1.75;
-  }
-  .compare-card .lines .v {
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-  }
-  .compare-card .lines .key { color: var(--text-faint); }
-  .compare-takeaway {
-    padding: 18px 22px;
-    background: var(--warm-soft);
-    border-radius: 6px;
-    font-size: 15px;
+    margin: 0 0 20px;
     line-height: 1.55;
+  }
+  .bars-intro strong {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 140px;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 640px) {
+    .bar-row { grid-template-columns: 1fr; gap: 4px; }
+  }
+  .bar-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .bar-label .bar-name {
+    font-size: 13px;
+    font-weight: 600;
     color: var(--text);
   }
-  .compare-takeaway strong {
-    color: var(--warm);
+  .bar-label .bar-age {
+    font-size: 12px;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .bar-track {
+    height: 40px;
+    background: var(--border-soft);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.25s ease;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    min-width: 60px;
+  }
+  .bar-fill.tone-now-fill { background: var(--accent); }
+  .bar-fill.tone-5-fill   { background: var(--warm); }
+  .bar-fill.tone-10-fill  { background: var(--warm-deep); }
+  .bar-value {
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .bar-delta {
+    font-size: 13px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--warm-deep);
+  }
+  .bar-delta.neutral { color: var(--text-faint); font-weight: 500; }
+
+  /* V3 — Comparison table */
+  .cmp-tbl {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .cmp-tbl thead th {
+    text-align: right;
+    padding: 12px 14px;
+    color: var(--text-faint);
+    font-weight: 500;
+    font-size: 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: bottom;
+  }
+  .cmp-tbl thead th:first-child { text-align: left; }
+  .cmp-tbl thead th .th-name {
+    display: block;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .cmp-tbl thead th:nth-child(2) .th-name { color: var(--accent); }
+  .cmp-tbl thead th:nth-child(3) .th-name { color: var(--warm); }
+  .cmp-tbl thead th:nth-child(4) .th-name { color: var(--warm-deep); }
+  .cmp-tbl thead th .th-age {
+    display: block;
+    font-size: 12px;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  .cmp-tbl tbody td {
+    padding: 14px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .cmp-tbl tbody tr:last-child td { border-bottom: none; }
+  .cmp-tbl tbody .cmp-tbl-key {
+    text-align: left;
+    color: var(--text-soft);
+    font-weight: 500;
+  }
+  .cmp-tbl tbody .cmp-tbl-warn { color: var(--warm); }
+  .cmp-tbl tbody .cmp-tbl-neutral { color: var(--text-faint); }
+  @media (max-width: 640px) {
+    .cmp-tbl { font-size: 13px; }
+    .cmp-tbl thead th, .cmp-tbl tbody td { padding: 10px 8px; }
   }
 
   /* ── Explainers ─────────────────────────────────────────────────── */
@@ -712,48 +843,133 @@
     </details>
   </section>
 
-  <!-- ── Chart ────────────────────────────────────────────────────────── -->
+  <!-- ── Comparison: same retirement, three timelines ────────────────── -->
   <section class="section">
-    <h2>Same target, three paths</h2>
-    <div class="chart-wrap">
-      <div class="chart-canvas-wrap">
-        <canvas id="main-chart"></canvas>
+    <h2>Side by side: now vs +5 vs +10</h2>
+    <div class="cmp-tabs" role="tablist">
+      <button class="cmp-tab active" type="button" data-cmp="cards">Stat cards</button>
+      <button class="cmp-tab" type="button" data-cmp="bars">Income gap</button>
+      <button class="cmp-tab" type="button" data-cmp="table">Table</button>
+    </div>
+
+    <!-- V1: Three stat cards ─────────────────────────────────────────── -->
+    <div class="cmp-view active" id="cmp-cards">
+      <div class="cmp-grid">
+        <div class="cmp-card tone-now">
+          <div class="cmp-card-tag">Start now</div>
+          <div class="cmp-card-age" id="card-now-age">Age 20</div>
+          <div class="cmp-card-row">
+            <span class="cmp-card-key">Monthly</span>
+            <span class="cmp-card-val" id="card-now-monthly">$0</span>
+          </div>
+          <div class="cmp-card-row">
+            <span class="cmp-card-key">Lifetime out of pocket</span>
+            <span class="cmp-card-val" id="card-now-total">$0</span>
+          </div>
+          <div class="cmp-card-row">
+            <span class="cmp-card-key">Retirement income</span>
+            <span class="cmp-card-val" id="card-now-income">$0/yr</span>
+          </div>
+        </div>
+        <div class="cmp-card tone-5">
+          <div class="cmp-card-tag">Wait 5 years</div>
+          <div class="cmp-card-age" id="card-5-age">Age 25</div>
+          <div class="cmp-card-row">
+            <span class="cmp-card-key">Monthly</span>
+            <span class="cmp-card-val" id="card-5-monthly">$0</span>
+          </div>
+          <div class="cmp-card-row">
+            <span class="cmp-card-key">Lifetime out of pocket</span>
+            <span class="cmp-card-val" id="card-5-total">$0</span>
+          </div>
+          <div class="cmp-card-row">
+            <span class="cmp-card-key">Retirement income</span>
+            <span class="cmp-card-val" id="card-5-income">$0/yr</span>
+          </div>
+        </div>
+        <div class="cmp-card tone-10">
+          <div class="cmp-card-tag">Wait 10 years</div>
+          <div class="cmp-card-age" id="card-10-age">Age 30</div>
+          <div class="cmp-card-row">
+            <span class="cmp-card-key">Monthly</span>
+            <span class="cmp-card-val" id="card-10-monthly">$0</span>
+          </div>
+          <div class="cmp-card-row">
+            <span class="cmp-card-key">Lifetime out of pocket</span>
+            <span class="cmp-card-val" id="card-10-total">$0</span>
+          </div>
+          <div class="cmp-card-row">
+            <span class="cmp-card-key">Retirement income</span>
+            <span class="cmp-card-val" id="card-10-income">$0/yr</span>
+          </div>
+        </div>
       </div>
-      <p class="chart-caption">Both portfolios end at the same target. The dashed portion of the wait line is the starting balance compounding on its own before contributions begin. The number on the right of each line is the required monthly contribution. Toggle the tabs above to compare different waiting periods.</p>
+      <p class="cmp-caption">Each scenario funds the same retirement income. The monthly and lifetime out-of-pocket are what it takes to get there.</p>
+    </div>
+
+    <!-- V2: Income gap bars ─────────────────────────────────────────── -->
+    <div class="cmp-view" id="cmp-bars">
+      <p class="bars-intro">If you paid <strong id="bars-monthly">$0</strong>/month at each age, here's the retirement income that funds:</p>
+      <div class="bar-row">
+        <div class="bar-label"><span class="bar-name">Start now</span><span class="bar-age" id="bars-now-age">age 20</span></div>
+        <div class="bar-track"><div class="bar-fill tone-now-fill" id="bars-now-fill"><span class="bar-value" id="bars-now-value">$0/yr</span></div></div>
+        <div class="bar-delta neutral">baseline</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label"><span class="bar-name">Wait 5</span><span class="bar-age" id="bars-5-age">age 25</span></div>
+        <div class="bar-track"><div class="bar-fill tone-5-fill" id="bars-5-fill"><span class="bar-value" id="bars-5-value">$0/yr</span></div></div>
+        <div class="bar-delta" id="bars-5-delta">−$0/yr</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label"><span class="bar-name">Wait 10</span><span class="bar-age" id="bars-10-age">age 30</span></div>
+        <div class="bar-track"><div class="bar-fill tone-10-fill" id="bars-10-fill"><span class="bar-value" id="bars-10-value">$0/yr</span></div></div>
+        <div class="bar-delta" id="bars-10-delta">−$0/yr</div>
+      </div>
+      <p class="cmp-caption">Same monthly contribution. Dramatically different retirement income because of compounding.</p>
+    </div>
+
+    <!-- V3: Side-by-side table ─────────────────────────────────────── -->
+    <div class="cmp-view" id="cmp-table">
+      <table class="cmp-tbl">
+        <thead>
+          <tr>
+            <th></th>
+            <th><span class="th-name">Start now</span><span class="th-age" id="tbl-now-age">Age 20</span></th>
+            <th><span class="th-name">Wait 5</span><span class="th-age" id="tbl-5-age">Age 25</span></th>
+            <th><span class="th-name">Wait 10</span><span class="th-age" id="tbl-10-age">Age 30</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="cmp-tbl-key">Required monthly</td>
+            <td id="tbl-now-monthly">$0</td>
+            <td id="tbl-5-monthly">$0</td>
+            <td id="tbl-10-monthly">$0</td>
+          </tr>
+          <tr>
+            <td class="cmp-tbl-key">Lifetime out of pocket</td>
+            <td id="tbl-now-total">$0</td>
+            <td id="tbl-5-total">$0</td>
+            <td id="tbl-10-total">$0</td>
+          </tr>
+          <tr>
+            <td class="cmp-tbl-key">Cost of waiting (vs now)</td>
+            <td class="cmp-tbl-neutral">—</td>
+            <td class="cmp-tbl-warn" id="tbl-5-cost">+$0</td>
+            <td class="cmp-tbl-warn" id="tbl-10-cost">+$0</td>
+          </tr>
+          <tr>
+            <td class="cmp-tbl-key">Retirement income if paid <span id="tbl-base-monthly">$0</span>/mo from this age</td>
+            <td id="tbl-now-alt">$0/yr</td>
+            <td id="tbl-5-alt">$0/yr</td>
+            <td id="tbl-10-alt">$0/yr</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="cmp-caption">Two ways to read the table: the top three rows show what it costs to fund the same retirement starting later. The bottom row shows what you'd actually get if you kept the same monthly cost but started later.</p>
     </div>
   </section>
 
-  <!-- ── Comparison ───────────────────────────────────────────────────── -->
-  <section class="section">
-    <h2>Compare any two ages</h2>
-    <div class="compare">
-      <div class="compare-grid">
-        <div class="compare-card">
-          <div class="age-input">
-            <span>Start at age</span>
-            <input type="number" id="compare-a" min="18" max="60" value="20">
-          </div>
-          <div class="lines">
-            <div><span class="key">Monthly:</span> <span class="v" id="compare-a-month">$0</span></div>
-            <div><span class="key">Total out of pocket:</span> <span class="v" id="compare-a-total">$0</span></div>
-          </div>
-        </div>
-        <div class="compare-card">
-          <div class="age-input">
-            <span>Start at age</span>
-            <input type="number" id="compare-b" min="18" max="60" value="26">
-          </div>
-          <div class="lines">
-            <div><span class="key">Monthly:</span> <span class="v" id="compare-b-month">$0</span></div>
-            <div><span class="key">Total out of pocket:</span> <span class="v" id="compare-b-total">$0</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="compare-takeaway" id="compare-takeaway">
-        Starting at <strong>26</strong> instead of <strong>20</strong> costs you an extra <strong>$0</strong> out of pocket — for the same retirement.
-      </div>
-    </div>
-  </section>
 
   <!-- ── Explainers ───────────────────────────────────────────────────── -->
   <section class="section">
@@ -830,10 +1046,8 @@ const state = {
   inflation: 0.03,
   scrubAge: 20,
   scrubMin: 18,
-  scrubMax: 40,
+  scrubMax: 70,
   waitYears: 5,
-  cmpA: 20,
-  cmpB: 26,
   nominal: false,
 };
 
@@ -1026,13 +1240,13 @@ document.querySelectorAll('.wait-tab').forEach(btn => {
   });
 });
 
-document.getElementById('compare-a').addEventListener('input', e => {
-  const v = parseInt(e.target.value, 10);
-  if (!isNaN(v)) { state.cmpA = v; recompute(); }
-});
-document.getElementById('compare-b').addEventListener('input', e => {
-  const v = parseInt(e.target.value, 10);
-  if (!isNaN(v)) { state.cmpB = v; recompute(); }
+// Comparison tabs (Stat cards / Income gap / Table)
+document.querySelectorAll('.cmp-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const which = btn.dataset.cmp;
+    document.querySelectorAll('.cmp-tab').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.cmp-view').forEach(v => v.classList.toggle('active', v.id === 'cmp-' + which));
+  });
 });
 
 document.getElementById('nominal-toggle').addEventListener('change', e => {
@@ -1041,244 +1255,38 @@ document.getElementById('nominal-toggle').addEventListener('change', e => {
   recompute();
 });
 
-// ── Chart: portfolio growth over time ───────────────────────────────────
-//
-// Three trajectories, all starting at the user's current age (scrubAge)
-// with the same current savings. Each scenario differs in WHEN contributions
-// begin: now, in 5 years, in 10 years. The required monthly contribution
-// for each scenario is sized so the portfolio still hits the same target
-// nest egg at retirement. Lines that begin contributing later need a
-// steeper monthly to catch up.
-
-const FUND_COLORS = [
-  { main: '#0b6e6e', fill: 'rgba(11,110,110,0.10)' }, // start now (teal)
-  { main: '#b85c2e', fill: 'rgba(184,92,46,0.10)' },  // wait    (rust)
-];
-
-// Build the {x: age, y: balance} time series for a single scenario.
-function trajectory(startAge) {
-  const currentAge = state.scrubAge;
-  const yearsToRet = state.retStartAge - currentAge;
-  const delay = startAge - currentAge;          // years before contributions begin
+// "Same monthly, different starting age" — what annual retirement income
+// does `monthly` fund if you start contributing at startAge? The existing
+// savings compounds from the user's current age to startAge with no
+// additional contributions; from startAge onward, monthly contributions
+// kick in until retirement.
+function incomeFromMonthlyAt(startAge, monthly) {
+  if (monthly == null || !isFinite(monthly)) return null;
+  const delay = startAge - state.scrubAge;
+  if (delay < 0) return null;
   const yearsContrib = state.retStartAge - startAge;
+  if (yearsContrib <= 0) return null;
 
-  const drawdownYears = state.planEndAge - state.retStartAge;
-  const target = pvAnnuity(state.income, state.rRet, drawdownYears);
+  const savingsAtStart = state.savings * Math.pow(1 + state.rAccum, delay);
+  const fvStart = savingsAtStart * Math.pow(1 + state.rAccum, yearsContrib);
+  const i = Math.pow(1 + state.rAccum, 1 / 12) - 1;
+  const months = yearsContrib * 12;
+  const fvContrib = (i === 0)
+    ? monthly * months
+    : monthly * (Math.pow(1 + i, months) - 1) / i;
+  const nestEgg = fvStart + fvContrib;
 
-  // What monthly contribution does this scenario need? The starting balance
-  // gets to grow on its own through `delay` before contributions start.
-  let monthly = null;
-  if (yearsContrib > 0) {
-    const balAtContribStart = state.savings * Math.pow(1 + state.rAccum, delay);
-    monthly = requiredMonthly(target, yearsContrib, balAtContribStart, state.rAccum);
-  }
-
-  // Walk the timeline. Quarter-year steps keep the line smooth without
-  // overwhelming Chart.js.
-  const points = [];
-  const i = Math.pow(1 + state.rAccum, 1 / 12) - 1; // monthly real rate
-  const step = 0.25;
-
-  for (let t = 0; t <= yearsToRet + 1e-9; t += step) {
-    let bal;
-    if (t <= delay) {
-      bal = state.savings * Math.pow(1 + state.rAccum, t);
-    } else {
-      const elapsed = t - delay;
-      const balAtContribStart = state.savings * Math.pow(1 + state.rAccum, delay);
-      const fvStart = balAtContribStart * Math.pow(1 + state.rAccum, elapsed);
-      const months  = elapsed * 12;
-      const fvContrib = monthly == null ? 0
-        : (i === 0 ? monthly * months
-                   : monthly * (Math.pow(1 + i, months) - 1) / i);
-      bal = fvStart + fvContrib;
-    }
-    if (state.nominal) bal = toNominal(bal, t, state.inflation);
-    points.push({ x: currentAge + t, y: bal });
-  }
-
-  // Display version of the monthly (approximate nominal at midpoint of
-  // contribution window).
-  let displayMonthly = monthly;
-  if (state.nominal && monthly != null) {
-    const midFromNow = delay + yearsContrib / 2;
-    displayMonthly = toNominal(monthly, midFromNow, state.inflation);
-  }
-
-  const displayTarget = state.nominal
-    ? toNominal(target, yearsToRet, state.inflation)
-    : target;
-
-  return { points, monthly: displayMonthly, target: displayTarget,
-           startAge, contributesFrom: startAge };
+  const drawdown = state.planEndAge - state.retStartAge;
+  if (drawdown <= 0) return null;
+  const r = state.rRet;
+  return (r === 0)
+    ? nestEgg / drawdown
+    : nestEgg * r / (1 - Math.pow(1 + r, -drawdown));
 }
-
-// Plugin: faint horizontal line at the target nest egg + label.
-const targetLinePlugin = {
-  id: 'targetLine',
-  afterDraw(chart) {
-    const t = chart.$target;
-    if (t == null || !isFinite(t)) return;
-    const yScale = chart.scales.y;
-    if (t > yScale.max || t < yScale.min) return;
-    const c = chart.ctx;
-    const y = yScale.getPixelForValue(t);
-    const { left, right } = chart.chartArea;
-    c.save();
-    c.strokeStyle = 'rgba(120,120,120,0.45)';
-    c.lineWidth = 1;
-    c.setLineDash([3, 4]);
-    c.beginPath();
-    c.moveTo(left, y);
-    c.lineTo(right, y);
-    c.stroke();
-    c.setLineDash([]);
-    c.fillStyle = '#777';
-    c.font = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-    c.textAlign = 'left';
-    c.textBaseline = 'bottom';
-    c.fillText('Target nest egg · ' + fmtMoney(t), left + 6, y - 3);
-    c.restore();
-  }
-};
-
-// Plugin: at the right edge of each line, label the required monthly contribution.
-const monthlyLabelPlugin = {
-  id: 'monthlyLabels',
-  afterDatasetsDraw(chart) {
-    const c = chart.ctx;
-    chart.data.datasets.forEach((ds, i) => {
-      const meta = chart.getDatasetMeta(i);
-      if (!meta.data || meta.data.length === 0) return;
-      const last = meta.data[meta.data.length - 1];
-      const monthly = ds._monthly;
-      if (monthly == null || !isFinite(monthly)) return;
-      c.save();
-      c.fillStyle = ds.borderColor;
-      c.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-      c.textAlign = 'left';
-      c.textBaseline = 'middle';
-      c.fillText('$' + Math.round(monthly).toLocaleString('en-US') + '/mo',
-                 last.x + 8, last.y);
-      c.restore();
-    });
-  }
-};
-
-// Dataset 0 is "Start now" (offset 0, always solid). Dataset 1 is the
-// selected wait scenario; its pre-contribution segments are dashed.
-function segmentStyle(getStartAge) {
-  return {
-    borderDash: ctx => ctx.p0.parsed.x < getStartAge() - 1e-9 ? [4, 4] : undefined,
-    borderWidth: ctx => ctx.p0.parsed.x < getStartAge() - 1e-9 ? 1.4 : 2.2,
-  };
-}
-
-const chart = new Chart(document.getElementById('main-chart').getContext('2d'), {
-  type: 'line',
-  plugins: [targetLinePlugin, monthlyLabelPlugin],
-  data: {
-    datasets: [
-      {
-        label: '',
-        data: [],
-        borderColor: FUND_COLORS[0].main,
-        backgroundColor: FUND_COLORS[0].fill,
-        pointRadius: 0, pointHoverRadius: 4,
-        borderWidth: 2.2, tension: 0.15, fill: false,
-        segment: segmentStyle(() => state.scrubAge),
-        _monthly: null,
-      },
-      {
-        label: '',
-        data: [],
-        borderColor: FUND_COLORS[1].main,
-        backgroundColor: FUND_COLORS[1].fill,
-        pointRadius: 0, pointHoverRadius: 4,
-        borderWidth: 2.2, tension: 0.15, fill: false,
-        segment: segmentStyle(() => state.scrubAge + state.waitYears),
-        _monthly: null,
-      },
-    ],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    parsing: false,
-    interaction: { mode: 'nearest', axis: 'x', intersect: false },
-    layout: { padding: { top: 14, right: 110 } },
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          boxWidth: 14, boxHeight: 2, padding: 18,
-          font: { size: 12 },
-          color: '#555555',
-          usePointStyle: false,
-        }
-      },
-      tooltip: {
-        backgroundColor: '#ffffff',
-        titleColor: '#1a1a1a',
-        bodyColor: '#1a1a1a',
-        borderColor: '#e8e8e3',
-        borderWidth: 1,
-        padding: 12,
-        titleFont: { size: 13, weight: '600' },
-        bodyFont: { size: 13 },
-        boxPadding: 4,
-        callbacks: {
-          title: items => 'Age ' + Number(items[0].parsed.x).toFixed(1),
-          label: ctx => ' ' + ctx.dataset.label + ': ' + fmtMoney(ctx.parsed.y),
-        }
-      }
-    },
-    scales: {
-      x: {
-        type: 'linear',
-        title: { display: true, text: 'Age', color: '#8a8a87', font: { size: 12 } },
-        grid:  { color: '#f0f0eb' },
-        ticks: {
-          color: '#8a8a87', font: { size: 12 },
-          stepSize: 5,
-          callback: v => Math.round(v),
-        },
-        border: { color: '#e8e8e3' },
-      },
-      y: {
-        title: { display: true, text: 'Portfolio balance', color: '#555', font: { size: 12 } },
-        grid: { color: '#f0f0eb' },
-        ticks: {
-          color: '#555555', font: { size: 12 },
-          callback: v => v >= 1000000
-            ? '$' + (v / 1000000).toFixed(1) + 'M'
-            : '$' + Math.round(v / 1000).toLocaleString('en-US') + 'k',
-        },
-        beginAtZero: true,
-        border: { color: '#e8e8e3' },
-      },
-    },
-  },
-});
 
 // ── Recompute / render ──────────────────────────────────────────────────
 
 function recompute() {
-  // Chart: two trajectories — start now, and the selected wait scenario.
-  const t0    = trajectory(state.scrubAge);
-  const tWait = trajectory(state.scrubAge + state.waitYears);
-
-  chart.data.datasets[0].label = `Start at ${state.scrubAge}`;
-  chart.data.datasets[0].data = t0.points;
-  chart.data.datasets[0]._monthly = t0.monthly;
-
-  chart.data.datasets[1].label = `Start at ${state.scrubAge + state.waitYears}`;
-  chart.data.datasets[1].data = tWait.points;
-  chart.data.datasets[1]._monthly = tWait.monthly;
-
-  chart.$target = t0.target;
-  chart.update('none');
-
   // Headline
   const sel     = priceAtAge(state.scrubAge);
   const selWait = priceAtAge(state.scrubAge + state.waitYears);
@@ -1319,23 +1327,75 @@ function recompute() {
   document.getElementById('wait-flip-value').textContent = (hasFlip && alt != null) ? `$${Math.round(alt).toLocaleString('en-US')}/year in retirement` : '';
   document.getElementById('wait-flip-extra').textContent = (hasFlip && altExtra != null) ? `+$${altExtra.toLocaleString('en-US')} every year for life` : '';
 
-  // Comparison
-  const pa = priceAtAge(state.cmpA);
-  const pb = priceAtAge(state.cmpB);
-  document.getElementById('compare-a-month').textContent = fmtMoney(pa.displayMonthly);
-  document.getElementById('compare-a-total').textContent = fmtMoney(pa.displayContrib);
-  document.getElementById('compare-b-month').textContent = fmtMoney(pb.displayMonthly);
-  document.getElementById('compare-b-total').textContent = fmtMoney(pb.displayContrib);
+  // ── Side-by-side comparison views (cards, bars, table) ──────────────
+  const sel5cmp  = priceAtAge(state.scrubAge + 5);
+  const sel10cmp = priceAtAge(state.scrubAge + 10);
+  const scenarios = [
+    { key: 'now', age: state.scrubAge,      data: sel },
+    { key: '5',   age: state.scrubAge + 5,  data: sel5cmp },
+    { key: '10',  age: state.scrubAge + 10, data: sel10cmp },
+  ];
 
-  const yearGap = Math.abs(state.cmpB - state.cmpA);
-  const later   = state.cmpB > state.cmpA ? state.cmpB : state.cmpA;
-  const earlier = state.cmpB > state.cmpA ? state.cmpA : state.cmpB;
-  const costGap = (pa.displayContrib != null && pb.displayContrib != null)
-    ? Math.abs(pb.displayContrib - pa.displayContrib)
-    : null;
-  document.getElementById('compare-takeaway').innerHTML = yearGap === 0
-    ? `Pick two different ages to see the gap.`
-    : `Starting at <strong>${later}</strong> instead of <strong>${earlier}</strong> costs you an extra <strong>${fmtMoney(costGap)}</strong> out of pocket over your career — for the same retirement.`;
+  // V1: Stat cards
+  scenarios.forEach(s => {
+    document.getElementById(`card-${s.key}-age`).textContent = `Age ${s.age}`;
+    document.getElementById(`card-${s.key}-monthly`).textContent =
+      s.data.displayMonthly == null ? '—' : fmtMoney(s.data.displayMonthly) + '/mo';
+    document.getElementById(`card-${s.key}-total`).textContent =
+      s.data.displayContrib == null ? '—' : fmtMoney(s.data.displayContrib);
+    document.getElementById(`card-${s.key}-income`).textContent =
+      fmtMoney(incomeDisp) + '/yr';
+  });
+
+  // V2: Income gap bars. Same monthly applied at each starting age.
+  const baseMonthlyRaw = sel.monthly; // real monthly contribution for "start now"
+  const incomes = scenarios.map(s => {
+    const raw = incomeFromMonthlyAt(s.age, baseMonthlyRaw);
+    if (raw == null) return null;
+    return state.nominal ? toNominal(raw, state.retStartAge - state.scrubAge, state.inflation) : raw;
+  });
+  const maxIncome = Math.max(...incomes.filter(v => v != null && isFinite(v)));
+  document.getElementById('bars-monthly').textContent = baseM == null ? '$0' : `$${baseM.toLocaleString('en-US')}`;
+  scenarios.forEach((s, i) => {
+    document.getElementById(`bars-${s.key}-age`).textContent = `age ${s.age}`;
+    const inc = incomes[i];
+    const fill = document.getElementById(`bars-${s.key}-fill`);
+    const value = document.getElementById(`bars-${s.key}-value`);
+    if (inc == null || !isFinite(inc)) {
+      fill.style.width = '0%';
+      value.textContent = '—';
+    } else {
+      const pct = maxIncome > 0 ? (inc / maxIncome) * 100 : 0;
+      fill.style.width = pct.toFixed(1) + '%';
+      value.textContent = fmtMoney(inc) + '/yr';
+    }
+    if (s.key !== 'now') {
+      const delta = (inc != null && incomes[0] != null) ? Math.round(inc) - Math.round(incomes[0]) : null;
+      document.getElementById(`bars-${s.key}-delta`).textContent =
+        delta == null ? '—' : (delta < 0 ? '−' : '+') + '$' + Math.abs(delta).toLocaleString('en-US') + '/yr';
+    }
+  });
+
+  // V3: Table
+  scenarios.forEach(s => {
+    document.getElementById(`tbl-${s.key}-age`).textContent = `Age ${s.age}`;
+    document.getElementById(`tbl-${s.key}-monthly`).textContent =
+      s.data.displayMonthly == null ? '—' : fmtMoney(s.data.displayMonthly);
+    document.getElementById(`tbl-${s.key}-total`).textContent =
+      s.data.displayContrib == null ? '—' : fmtMoney(s.data.displayContrib);
+  });
+  document.getElementById('tbl-5-cost').textContent =
+    (sel5cmp.displayContrib != null && baseTot != null)
+      ? '+' + fmtMoney(sel5cmp.displayContrib - baseTot) : '—';
+  document.getElementById('tbl-10-cost').textContent =
+    (sel10cmp.displayContrib != null && baseTot != null)
+      ? '+' + fmtMoney(sel10cmp.displayContrib - baseTot) : '—';
+  document.getElementById('tbl-base-monthly').textContent = baseM == null ? '$0' : `$${baseM.toLocaleString('en-US')}`;
+  scenarios.forEach((s, i) => {
+    const inc = incomes[i];
+    document.getElementById(`tbl-${s.key}-alt`).textContent =
+      inc == null ? '—' : fmtMoney(inc) + '/yr';
+  });
 }
 
 recompute();
