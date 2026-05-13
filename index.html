@@ -1238,7 +1238,7 @@
       <div class="chart-canvas-wrap">
         <canvas id="lifetime-chart"></canvas>
       </div>
-      <p class="chart-caption">Contributions build the balance to retirement, then your withdrawal strategy draws it down (or holds it steady). Where the line lands at age 120 tells you whether the strategy survives a very long life.</p>
+      <p class="chart-caption">The solid teal area is your own money — starting savings plus all monthly contributions. The lighter band above it is the compounding growth on top. Together they make up your portfolio balance at every age, all the way through retirement to 120.</p>
     </div>
   </section>
 
@@ -1746,41 +1746,54 @@ document.getElementById('nominal-toggle').addEventListener('change', e => {
 // Drawdown phase subtracts the annual income each year and compounds what's
 // left at the in-retirement return.
 
+// Returns two stacked series — principal (your money) and compounding
+// (growth on top). principal + compounding = portfolio balance at each age.
+// During drawdown, total balance falls and compounding is depleted first;
+// if total drops below cumulative contributions, principal visually shrinks.
 function lifetimeTrajectory() {
   const startAge = state.scrubAge;
   const retAge   = state.retStartAge;
   const endAge   = 120;
-  const step     = 0.5; // half-year resolution
+  const step     = 0.5;
 
   const pr      = priceAtAge(startAge);
   const monthly = (pr.monthly == null || !isFinite(pr.monthly)) ? 0 : pr.monthly;
   const iMonth  = Math.pow(1 + state.rAccum, 1 / 12) - 1;
 
-  const points = [];
+  const principal   = [];
+  const compounding = [];
   let balance = state.savings;
+  let contributed = state.savings; // running principal (starting balance + monthly contributions to date)
   let age = startAge;
 
   while (age <= endAge + 1e-9) {
-    let displayBal = Math.max(0, balance);
-    if (state.nominal) displayBal = toNominal(displayBal, age - startAge, state.inflation);
-    points.push({ x: age, y: displayBal });
-    if (age >= endAge) break;
+    const bal      = Math.max(0, balance);
+    const principalShown = Math.min(bal, contributed);
+    const compShown      = Math.max(0, bal - contributed);
 
-    // Snap to retirement age if the next step would cross it.
+    let p = principalShown, c = compShown;
+    if (state.nominal) {
+      p = toNominal(p, age - startAge, state.inflation);
+      c = toNominal(c, age - startAge, state.inflation);
+    }
+    principal.push({ x: age, y: p });
+    compounding.push({ x: age, y: c });
+
+    if (age >= endAge) break;
     let nextAge = Math.min(age + step, endAge);
     if (age < retAge && nextAge > retAge) nextAge = retAge;
     const dt = nextAge - age;
     if (dt <= 1e-9) { age = endAge; continue; }
 
     if (age < retAge) {
-      // Accumulation: balance compounds at rAccum + monthly contributions
+      // Accumulation
       const months = dt * 12;
       const fvCon  = (iMonth === 0) ? monthly * months
                                     : monthly * (Math.pow(1 + iMonth, months) - 1) / iMonth;
       balance = balance * Math.pow(1 + state.rAccum, dt) + fvCon;
+      contributed += monthly * 12 * dt;
     } else {
-      // Drawdown: withdraw annual income proportionally for the partial year,
-      // then compound the remainder at rRet.
+      // Drawdown
       balance = balance - state.income * dt;
       balance = balance > 0 ? balance * Math.pow(1 + state.rRet, dt) : 0;
     }
@@ -1788,7 +1801,7 @@ function lifetimeTrajectory() {
     age = nextAge;
   }
 
-  return points;
+  return { principal, compounding };
 }
 
 const retLinePlugin = {
@@ -1820,26 +1833,48 @@ const lifetimeChart = new Chart(document.getElementById('lifetime-chart').getCon
   type: 'line',
   plugins: [retLinePlugin],
   data: {
-    datasets: [{
-      label: 'Portfolio balance',
-      data: [],
-      borderColor: '#0b6e6e',
-      backgroundColor: 'rgba(11,110,110,0.10)',
-      borderWidth: 2.2,
-      tension: 0.18,
-      pointRadius: 0,
-      pointHoverRadius: 4,
-      fill: true,
-    }],
+    datasets: [
+      {
+        label: 'Your contributions',
+        data: [],
+        borderColor: '#0b6e6e',
+        backgroundColor: 'rgba(11,110,110,0.65)',
+        borderWidth: 1.5,
+        tension: 0.18,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: 'origin',
+      },
+      {
+        label: 'Compounding',
+        data: [],
+        borderColor: 'rgba(11,110,110,0.45)',
+        backgroundColor: 'rgba(11,110,110,0.22)',
+        borderWidth: 1.5,
+        tension: 0.18,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: '-1',
+      },
+    ],
   },
   options: {
     responsive: true,
     maintainAspectRatio: false,
     parsing: false,
-    interaction: { mode: 'nearest', axis: 'x', intersect: false },
+    interaction: { mode: 'index', axis: 'x', intersect: false },
     layout: { padding: { top: 16, right: 12 } },
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: true,
+        position: 'bottom',
+        labels: {
+          boxWidth: 14, boxHeight: 2, padding: 16,
+          font: { size: 12 },
+          color: '#555555',
+          usePointStyle: false,
+        }
+      },
       tooltip: {
         backgroundColor: '#ffffff',
         titleColor: '#1a1a1a',
@@ -1851,7 +1886,11 @@ const lifetimeChart = new Chart(document.getElementById('lifetime-chart').getCon
         bodyFont: { size: 13 },
         callbacks: {
           title: items => 'Age ' + Number(items[0].parsed.x).toFixed(1),
-          label: ctx => ' Balance: ' + fmtMoney(ctx.parsed.y),
+          label: ctx => ' ' + ctx.dataset.label + ': ' + fmtMoney(ctx.parsed.y),
+          footer: items => {
+            const total = items.reduce((s, it) => s + (it.parsed.y || 0), 0);
+            return 'Total balance: ' + fmtMoney(total);
+          }
         }
       }
     },
@@ -1864,6 +1903,7 @@ const lifetimeChart = new Chart(document.getElementById('lifetime-chart').getCon
         border: { color: '#e8e8e3' },
       },
       y: {
+        stacked: true,
         title: { display: true, text: 'Balance', color: '#555', font: { size: 12 } },
         grid:  { color: '#f0f0eb' },
         ticks: {
@@ -1917,8 +1957,10 @@ function recompute() {
   });
   state.strategy = savedStrategy;
 
-  // Lifetime trajectory chart
-  lifetimeChart.data.datasets[0].data = lifetimeTrajectory();
+  // Lifetime trajectory chart (stacked: principal + compounding)
+  const traj = lifetimeTrajectory();
+  lifetimeChart.data.datasets[0].data = traj.principal;
+  lifetimeChart.data.datasets[1].data = traj.compounding;
   lifetimeChart.$retAge = state.retStartAge;
   lifetimeChart.update('none');
 
