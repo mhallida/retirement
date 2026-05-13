@@ -369,41 +369,116 @@
   .ratio-seg.seg-you  { background: var(--accent); }
   .ratio-seg.seg-grow { background: rgba(11, 110, 110, 0.32); }
 
-  /* ── Advanced details ───────────────────────────────────────────── */
-  .advanced {
-    border: 1px solid var(--border);
-    border-radius: 8px;
+  /* ── Advanced settings: right-side slideout ─────────────────────── */
+  .advanced-trigger {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 30;
+    padding: 9px 14px;
     background: var(--panel);
-    padding: 0;
-  }
-  .advanced > summary {
-    padding: 18px 22px;
-    cursor: pointer;
-    list-style: none;
-    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font: inherit;
+    font-size: 13px;
     font-weight: 500;
     color: var(--text-soft);
+    cursor: pointer;
+    transition: all 0.12s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  .advanced-trigger:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .advanced-trigger .gear {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    opacity: 0.7;
+  }
+
+  .advanced-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 20, 20, 0.18);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+    z-index: 40;
+  }
+  .advanced-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 440px;
+    max-width: 100%;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    z-index: 50;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+    overflow-y: auto;
+    box-shadow: -8px 0 28px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-direction: column;
+  }
+  body.advanced-open .advanced-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  body.advanced-open .advanced-panel { transform: translateX(0); }
+
+  .advanced-panel-header {
+    position: sticky;
+    top: 0;
+    background: var(--panel);
+    padding: 20px 24px 14px;
+    border-bottom: 1px solid var(--border-soft);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    z-index: 1;
   }
-  .advanced > summary::-webkit-details-marker { display: none; }
-  .advanced > summary::after {
-    content: "+";
-    color: var(--text-faint);
-    font-size: 20px;
+  .advanced-panel-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .advanced-close {
+    background: transparent;
+    border: none;
+    font-size: 24px;
     line-height: 1;
+    cursor: pointer;
+    color: var(--text-faint);
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.12s ease;
   }
-  .advanced[open] > summary::after { content: "–"; }
-  .advanced[open] > summary { border-bottom: 1px solid var(--border-soft); }
-  .advanced .inputs {
-    padding: 26px 24px 24px;
+  .advanced-close:hover {
+    color: var(--text);
+    background: var(--bg);
+  }
+
+  .advanced-panel .inputs {
+    padding: 24px;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 26px 36px;
+    grid-template-columns: 1fr;
+    gap: 22px;
   }
-  @media (max-width: 640px) {
-    .advanced .inputs { grid-template-columns: 1fr; gap: 22px; }
+  @media (max-width: 480px) {
+    .advanced-trigger { top: 16px; right: 16px; padding: 7px 12px; font-size: 12px; }
   }
   .input-row label.input-label {
     display: block;
@@ -463,8 +538,8 @@
   .inflation-row.show { display: block; }
 
   /* Withdrawal-strategy picker */
-  .strategy-section {
-    padding: 22px 24px 24px;
+  .advanced-panel .strategy-section {
+    padding: 22px 24px 28px;
     border-top: 1px solid var(--border-soft);
   }
   .strategy-section h3 {
@@ -934,11 +1009,20 @@
     </div>
   </section>
 
-  <!-- ── Advanced assumptions (collapsed by default) ──────────────────── -->
-  <section class="section">
-    <details class="advanced">
-      <summary>Advanced assumptions</summary>
-      <div class="inputs">
+  <!-- ── Advanced assumptions: right slideout ──────────────────────────── -->
+  <button class="advanced-trigger" id="advanced-trigger" aria-label="Open advanced settings">
+    <svg class="gear" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M9.405 1.05a1 1 0 0 0-1.81 0l-.428 1.5a6 6 0 0 0-1.094.453L4.55 2.197a1 1 0 0 0-1.343 1.343l.806 1.523a6 6 0 0 0-.453 1.094l-1.5.428a1 1 0 0 0 0 1.81l1.5.428c.118.378.27.744.453 1.094L3.207 11.45a1 1 0 0 0 1.343 1.343l1.523-.806c.35.184.716.335 1.094.453l.428 1.5a1 1 0 0 0 1.81 0l.428-1.5a6 6 0 0 0 1.094-.453l1.523.806a1 1 0 0 0 1.343-1.343l-.806-1.523c.184-.35.335-.716.453-1.094l1.5-.428a1 1 0 0 0 0-1.81l-1.5-.428a6 6 0 0 0-.453-1.094l.806-1.523a1 1 0 0 0-1.343-1.343L11.55 3.003a6 6 0 0 0-1.094-.453l-.428-1.5zM8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/>
+    </svg>
+    Advanced
+  </button>
+  <div class="advanced-backdrop" id="advanced-backdrop"></div>
+  <aside class="advanced-panel" id="advanced-panel" role="dialog" aria-modal="false" aria-labelledby="advanced-panel-title" aria-hidden="true">
+    <div class="advanced-panel-header">
+      <h3 id="advanced-panel-title">Advanced assumptions</h3>
+      <button class="advanced-close" id="advanced-close" aria-label="Close">×</button>
+    </div>
+    <div class="inputs">
         <div class="input-row">
           <label class="input-label" for="income-num">Annual retirement income</label>
           <div class="controls">
@@ -1044,8 +1128,7 @@
           </label>
         </div>
       </div>
-    </details>
-  </section>
+  </aside>
 
   <!-- ── Lifetime trajectory ────────────────────────────────────────── -->
   <section class="section">
@@ -1502,6 +1585,22 @@ document.querySelectorAll('.wait-tab').forEach(btn => {
     state.waitYears = parseInt(btn.dataset.years, 10);
     recompute();
   });
+});
+
+// Advanced-settings slideout panel
+function openAdvanced()  {
+  document.body.classList.add('advanced-open');
+  document.getElementById('advanced-panel').setAttribute('aria-hidden', 'false');
+}
+function closeAdvanced() {
+  document.body.classList.remove('advanced-open');
+  document.getElementById('advanced-panel').setAttribute('aria-hidden', 'true');
+}
+document.getElementById('advanced-trigger').addEventListener('click', openAdvanced);
+document.getElementById('advanced-close').addEventListener('click', closeAdvanced);
+document.getElementById('advanced-backdrop').addEventListener('click', closeAdvanced);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.body.classList.contains('advanced-open')) closeAdvanced();
 });
 
 // Comparison tabs (Stat cards / Income gap / Table)
