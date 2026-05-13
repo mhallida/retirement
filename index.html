@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Price of Waiting</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --bg: #fafaf7;
@@ -553,6 +554,25 @@
     margin-left: 30px;
   }
 
+  /* ── Lifetime chart ──────────────────────────────────────────── */
+  .chart-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 26px 24px 22px;
+  }
+  .chart-canvas-wrap {
+    position: relative;
+    height: 360px;
+  }
+  @media (max-width: 540px) { .chart-canvas-wrap { height: 280px; } }
+  .chart-caption {
+    font-size: 13px;
+    color: var(--text-faint);
+    margin: 16px 4px 0;
+    line-height: 1.55;
+  }
+
   /* ── Comparison tabs ──────────────────────────────────────────── */
   .cmp-tabs {
     display: flex;
@@ -1025,6 +1045,17 @@
         </div>
       </div>
     </details>
+  </section>
+
+  <!-- ── Lifetime trajectory ────────────────────────────────────────── -->
+  <section class="section">
+    <h2>Your fund from now to age 120</h2>
+    <div class="chart-wrap">
+      <div class="chart-canvas-wrap">
+        <canvas id="lifetime-chart"></canvas>
+      </div>
+      <p class="chart-caption">Contributions build the balance to retirement, then your withdrawal strategy draws it down (or holds it steady). Where the line lands at age 120 tells you whether the strategy survives a very long life.</p>
+    </div>
   </section>
 
   <!-- ── Comparison: same retirement, three timelines ────────────────── -->
@@ -1503,6 +1534,145 @@ document.getElementById('nominal-toggle').addEventListener('change', e => {
   recompute();
 });
 
+// ── Lifetime trajectory ──────────────────────────────────────────────
+// Build a {age, balance} series from the user's start age through age 120.
+// Accumulation phase uses the monthly contribution priceAtAge() solved for.
+// Drawdown phase subtracts the annual income each year and compounds what's
+// left at the in-retirement return.
+
+function lifetimeTrajectory() {
+  const startAge = state.scrubAge;
+  const retAge   = state.retStartAge;
+  const endAge   = 120;
+  const step     = 0.5; // half-year resolution
+
+  const pr      = priceAtAge(startAge);
+  const monthly = (pr.monthly == null || !isFinite(pr.monthly)) ? 0 : pr.monthly;
+  const iMonth  = Math.pow(1 + state.rAccum, 1 / 12) - 1;
+
+  const points = [];
+  let balance = state.savings;
+  let age = startAge;
+
+  while (age <= endAge + 1e-9) {
+    let displayBal = Math.max(0, balance);
+    if (state.nominal) displayBal = toNominal(displayBal, age - startAge, state.inflation);
+    points.push({ x: age, y: displayBal });
+    if (age >= endAge) break;
+
+    // Snap to retirement age if the next step would cross it.
+    let nextAge = Math.min(age + step, endAge);
+    if (age < retAge && nextAge > retAge) nextAge = retAge;
+    const dt = nextAge - age;
+    if (dt <= 1e-9) { age = endAge; continue; }
+
+    if (age < retAge) {
+      // Accumulation: balance compounds at rAccum + monthly contributions
+      const months = dt * 12;
+      const fvCon  = (iMonth === 0) ? monthly * months
+                                    : monthly * (Math.pow(1 + iMonth, months) - 1) / iMonth;
+      balance = balance * Math.pow(1 + state.rAccum, dt) + fvCon;
+    } else {
+      // Drawdown: withdraw annual income proportionally for the partial year,
+      // then compound the remainder at rRet.
+      balance = balance - state.income * dt;
+      balance = balance > 0 ? balance * Math.pow(1 + state.rRet, dt) : 0;
+    }
+
+    age = nextAge;
+  }
+
+  return points;
+}
+
+const retLinePlugin = {
+  id: 'retLine',
+  afterDraw(chart) {
+    const retAge = chart.$retAge;
+    if (retAge == null) return;
+    const x = chart.scales.x.getPixelForValue(retAge);
+    const { top, bottom } = chart.chartArea;
+    const c = chart.ctx;
+    c.save();
+    c.strokeStyle = 'rgba(184,92,46,0.75)';
+    c.lineWidth = 1.2;
+    c.setLineDash([4, 4]);
+    c.beginPath();
+    c.moveTo(x, top);
+    c.lineTo(x, bottom);
+    c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = '#b85c2e';
+    c.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    c.textAlign = 'center';
+    c.fillText('Retire at ' + retAge, x, top - 4);
+    c.restore();
+  }
+};
+
+const lifetimeChart = new Chart(document.getElementById('lifetime-chart').getContext('2d'), {
+  type: 'line',
+  plugins: [retLinePlugin],
+  data: {
+    datasets: [{
+      label: 'Portfolio balance',
+      data: [],
+      borderColor: '#0b6e6e',
+      backgroundColor: 'rgba(11,110,110,0.10)',
+      borderWidth: 2.2,
+      tension: 0.18,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      fill: true,
+    }],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    parsing: false,
+    interaction: { mode: 'nearest', axis: 'x', intersect: false },
+    layout: { padding: { top: 16, right: 12 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#ffffff',
+        titleColor: '#1a1a1a',
+        bodyColor: '#1a1a1a',
+        borderColor: '#e8e8e3',
+        borderWidth: 1,
+        padding: 12,
+        titleFont: { size: 13, weight: '600' },
+        bodyFont: { size: 13 },
+        callbacks: {
+          title: items => 'Age ' + Number(items[0].parsed.x).toFixed(1),
+          label: ctx => ' Balance: ' + fmtMoney(ctx.parsed.y),
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        title: { display: true, text: 'Age', color: '#8a8a87', font: { size: 12 } },
+        grid:  { color: '#f0f0eb' },
+        ticks: { color: '#8a8a87', font: { size: 12 }, stepSize: 10, callback: v => Math.round(v) },
+        border: { color: '#e8e8e3' },
+      },
+      y: {
+        title: { display: true, text: 'Balance', color: '#555', font: { size: 12 } },
+        grid:  { color: '#f0f0eb' },
+        ticks: {
+          color: '#555555', font: { size: 12 },
+          callback: v => v >= 1000000
+            ? '$' + (v / 1000000).toFixed(1) + 'M'
+            : '$' + Math.round(v / 1000).toLocaleString('en-US') + 'k',
+        },
+        beginAtZero: true,
+        border: { color: '#e8e8e3' },
+      },
+    },
+  },
+});
+
 // "Same monthly, different starting age" — what annual retirement income
 // does `monthly` fund if you start contributing at startAge? The existing
 // savings compounds from the user's current age to startAge with no
@@ -1540,6 +1710,11 @@ function recompute() {
     if (tgtEl) tgtEl.textContent = '≈ ' + fmtMoney(t);
   });
   state.strategy = savedStrategy;
+
+  // Lifetime trajectory chart
+  lifetimeChart.data.datasets[0].data = lifetimeTrajectory();
+  lifetimeChart.$retAge = state.retStartAge;
+  lifetimeChart.update('none');
 
   // Headline
   const sel     = priceAtAge(state.scrubAge);
