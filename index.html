@@ -1357,7 +1357,11 @@ function altIncomeBumped(monthlyEarly, monthlyLate, bumpYears) {
 function priceAtAge(startAge) {
   const years = state.retStartAge - startAge;
   const target = targetFromIncome(state.income);
-  const monthly = requiredMonthly(target, years, state.savings, state.rAccum);
+  // If startAge > scrubAge the user is delaying contributions; their existing
+  // savings keeps compounding during that wait at the accumulation return.
+  const delay = Math.max(0, startAge - state.scrubAge);
+  const savingsAtStart = state.savings * Math.pow(1 + state.rAccum, delay);
+  const monthly = requiredMonthly(target, years, savingsAtStart, state.rAccum);
 
   if (monthly === null) {
     return { years, target, monthly: null, totalContrib: null, growth: null,
