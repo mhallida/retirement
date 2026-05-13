@@ -629,6 +629,88 @@
     margin-left: 30px;
   }
 
+  /* ── Custom-monthly calculator ──────────────────────────────── */
+  .custom-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 26px 30px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  @media (max-width: 640px) {
+    .custom-card { gap: 14px; padding: 22px; }
+  }
+  .custom-card .custom-lbl {
+    font-size: 15px;
+    color: var(--text-soft);
+  }
+  .custom-input {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    padding: 2px 0;
+  }
+  .custom-input:focus-within { border-bottom-color: var(--accent); }
+  .custom-input .prefix {
+    font-size: 18px;
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+  .custom-input input {
+    font: inherit;
+    font-size: 22px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    border: none;
+    background: transparent;
+    padding: 0;
+    width: 110px;
+    text-align: right;
+    color: var(--text);
+  }
+  .custom-input input:focus { outline: none; }
+  .custom-input .suffix {
+    font-size: 14px;
+    color: var(--text-faint);
+    margin-left: 2px;
+  }
+  .custom-arrow {
+    font-size: 18px;
+    color: var(--text-faint);
+    user-select: none;
+  }
+  @media (max-width: 540px) { .custom-arrow { display: none; } }
+  .custom-result {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .custom-result .custom-income {
+    font-size: 22px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    line-height: 1.1;
+  }
+  .custom-result .custom-delta {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .custom-result .custom-delta.positive { color: var(--accent); }
+  .custom-result .custom-delta.negative { color: var(--warm); }
+  .custom-caption {
+    font-size: 13px;
+    color: var(--text-faint);
+    margin: 14px 4px 0;
+    line-height: 1.55;
+  }
+
   /* ── Lifetime chart ──────────────────────────────────────────── */
   .chart-wrap {
     background: var(--panel);
@@ -1130,6 +1212,25 @@
       </div>
   </aside>
 
+  <!-- ── Custom-monthly calculator ──────────────────────────────────── -->
+  <section class="section">
+    <h2>What if you paid your own amount?</h2>
+    <div class="custom-card">
+      <span class="custom-lbl">If you pay</span>
+      <div class="custom-input">
+        <span class="prefix">$</span>
+        <input id="custom-monthly" type="text" inputmode="numeric" value="500">
+        <span class="suffix">/month</span>
+      </div>
+      <span class="custom-arrow">→</span>
+      <div class="custom-result">
+        <div class="custom-income" id="custom-income">$0/yr in retirement</div>
+        <div class="custom-delta" id="custom-delta">+$0 vs your target</div>
+      </div>
+    </div>
+    <p class="custom-caption">Override the calculated monthly to see what a different contribution would actually fund. Uses your current savings, accumulation return, and the withdrawal strategy you've selected.</p>
+  </section>
+
   <!-- ── Lifetime trajectory ────────────────────────────────────────── -->
   <section class="section">
     <h2>Your fund from now to age 120</h2>
@@ -1346,6 +1447,7 @@ const state = {
   scrubMin: 0,
   scrubMax: 70,
   waitYears: 5,
+  customMonthly: 500,
   nominal: false,
   strategy: 'depletion', // bengen | conservative | aggressive | depletion
 };
@@ -1534,6 +1636,7 @@ function bindCurrencyText(numId, key) {
   n.value = state[key].toLocaleString('en-US');
 }
 bindCurrencyText('savings-num', 'savings');
+bindCurrencyText('custom-monthly', 'customMonthly');
 bindCurrencyPair('income-slider', 'income-num', 'income');
 bindPair('ret-start-slider', 'ret-start-num', 'retStartAge');
 bindPair('plan-end-slider',  'plan-end-num',  'planEndAge');
@@ -1818,6 +1921,34 @@ function recompute() {
   lifetimeChart.data.datasets[0].data = lifetimeTrajectory();
   lifetimeChart.$retAge = state.retStartAge;
   lifetimeChart.update('none');
+
+  // Custom-monthly calculator: "if I paid $X/mo, what would I retire on?"
+  const yearsToRetForCustom = state.retStartAge - state.scrubAge;
+  const customRaw = incomeFromMonthlyAt(state.scrubAge, state.customMonthly);
+  const customIncome = customRaw == null ? null
+    : (state.nominal ? toNominal(customRaw, yearsToRetForCustom, state.inflation) : customRaw);
+  const targetIncomeDisp = state.nominal
+    ? toNominal(state.income, yearsToRetForCustom, state.inflation)
+    : state.income;
+  document.getElementById('custom-income').textContent =
+    customIncome == null ? '— /yr' : `${fmtMoney(customIncome)}/yr in retirement`;
+  const deltaEl = document.getElementById('custom-delta');
+  if (customIncome == null) {
+    deltaEl.textContent = '';
+    deltaEl.className = 'custom-delta';
+  } else {
+    const delta = Math.round(customIncome) - Math.round(targetIncomeDisp);
+    if (delta > 0) {
+      deltaEl.textContent = `+${fmtMoney(delta)}/yr above your target`;
+      deltaEl.className = 'custom-delta positive';
+    } else if (delta < 0) {
+      deltaEl.textContent = `${fmtMoney(delta)}/yr below your target`;
+      deltaEl.className = 'custom-delta negative';
+    } else {
+      deltaEl.textContent = 'Matches your target';
+      deltaEl.className = 'custom-delta';
+    }
+  }
 
   // Headline
   const sel     = priceAtAge(state.scrubAge);
